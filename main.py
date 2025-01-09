@@ -136,10 +136,19 @@ async def download_video(url: str, db: Session):
             },
             'nocheckcertificate': True,
             'outtmpl_thumbnail': 'static/thumbnails/%(id)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }],
+            'keepvideo': True,  # 保留原始视频文件
+            'postprocessors': [
+                {
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                },
+                {
+                    # 提取音频
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'm4a',
+                    'preferredquality': '192',
+                }
+            ],
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -279,7 +288,7 @@ async def start_download(url: str = Form(...), background_tasks: BackgroundTasks
 async def get_progress(video_id: str):
     """获取下载进度"""
     progress = download_progress.get(video_id, 0)
-    logger.debug(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
+    logger.info(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
     return {"progress": progress} 
 
 if __name__ == "__main__":
