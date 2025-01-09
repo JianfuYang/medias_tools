@@ -55,6 +55,7 @@ download_progress = {}
 HAS_FFMPEG = check_ffmpeg()
 
 def progress_hook(d):
+    # logger.info(f"下载进度回调: {d}")
     """下载进度回调"""
     try:
         if d['status'] == 'downloading':
@@ -180,13 +181,13 @@ async def download_video(url: str, db: Session):
                     raise Exception("无法获取视频信息")
                 
                 video_id = info['id']
-                logger.info(f"视频信息: {info.get('title', 'Unknown Title')}")
+                logger.debug(f"视频信息: {info.get('title', 'Unknown Title')}")
                 
                 # 获取所有相关文件路径
                 paths = get_media_paths(video_id, date_folder)
                 
                 # 重置进度
-                download_progress[video_id] = 0
+                download_progress[video_id] = 10
                 
                 # 下载视频
                 logger.info("开始下载文件...")
@@ -310,7 +311,12 @@ async def start_download(url: str = Form(...), background_tasks: BackgroundTasks
 @app.get("/progress/{video_id}")
 async def get_progress(video_id: str):
     """获取下载进度"""
-    progress = download_progress.get(video_id, 0)
+    if video_id in download_progress:
+        # 存在则说明还没下载完成或失败
+        progress = download_progress.get(video_id, 0)
+    else:
+        # 不存在则说明下载完成
+        progress = 100
     logger.info(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
     return {"progress": progress} 
 

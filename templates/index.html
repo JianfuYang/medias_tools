@@ -283,11 +283,9 @@
 
         // 取消轮询
         function cancelPolling() {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
             currentVideoId = null;
+            lastProgress = 0;
+            noProgressCount = 0;
             const progressContainer = document.getElementById('progress-container');
             progressContainer.classList.add('hidden');
         }
@@ -409,6 +407,16 @@
             progressText.textContent = '准备下载...';
             
             try {
+                // 提取视频ID
+                const videoId = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1];
+                if (!videoId) {
+                    throw new Error('无法识别视频ID');
+                }
+
+                // 设置初始进度为10%
+                progressBar.style.width = '10%';
+                progressText.textContent = '10% - 正在解析视频...';
+                
                 // 创建FormData对象
                 const formData = new FormData();
                 formData.append('url', url);
@@ -425,19 +433,20 @@
                     throw new Error(result.message || '下载请求失败');
                 }
 
-                // 提取视频ID
-                const videoId = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1];
-                if (videoId) {
-                    currentVideoId = videoId;
-                    lastProgress = 0;
-                    noProgressCount = 0;
-                    // 使用setInterval替代递归调用
-                    pollingInterval = setInterval(pollProgress, 100);
-                }
+                // 设置当前下载的视频ID
+                currentVideoId = videoId;
+                lastProgress = 10; // 设置lastProgress为10，这样不会触发无进度检测
+                noProgressCount = 0;
+
+                // 启动第一次进度查询
+                await pollProgress();
                 
             } catch (error) {
-                alert(error.message);
-                progressContainer.classList.add('hidden');
+                console.error('下载失败:', error);
+                const progressText = document.getElementById('progress-text');
+                const progressBar = document.getElementById('progress-bar-fill');
+                progressText.textContent = error.message;
+                progressBar.style.backgroundColor = '#EF4444'; // 红色
             }
         }
 
@@ -456,9 +465,8 @@
                 // 检查进度是否有变化
                 if (progress === lastProgress) {
                     noProgressCount++;
-                    // 如果30秒没有进度变化，认为下载可能出现问题
-                    if (noProgressCount >= 300) { // 100ms * 300 = 30秒
-                        clearInterval(pollingInterval);
+                    // 如果3秒没有进度变化，认为下载可能出现问题
+                    if (noProgressCount >= 6) { // 500ms * 6 = 3秒
                         progressText.textContent = "下载可能出现问题，请刷新页面重试";
                         progressBar.style.backgroundColor = '#EF4444'; // 红色
                         return;
@@ -475,7 +483,6 @@
                 
                 // 如果下载完成
                 if (progress >= 100) {
-                    clearInterval(pollingInterval);
                     progressText.textContent = "下载完成！";
                     progressBar.style.backgroundColor = '#10B981'; // 绿色
                     
@@ -486,11 +493,24 @@
                     setTimeout(() => {
                         updateVideoList();
                     }, 1000);
+                    
+                    // 3秒后自动关闭进度条
+                    setTimeout(() => {
+                        cancelPolling();
+                    }, 3000);
+                    
+                    // 重置状态
+                    currentVideoId = null;
+                    return;
                 }
+                
+                // 如果还没完成，设置下一次轮询
+                setTimeout(() => pollProgress(), 500);
                 
             } catch (error) {
                 console.error('获取进度失败:', error);
-                clearInterval(pollingInterval);
+                const progressText = document.getElementById('progress-text');
+                const progressBar = document.getElementById('progress-bar-fill');
                 progressText.textContent = "获取进度失败，请刷新页面重试";
                 progressBar.style.backgroundColor = '#EF4444'; // 红色
             }
