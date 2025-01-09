@@ -121,6 +121,11 @@
             loading.style.display = 'flex';
             overlay.style.display = 'none';
 
+            // 设置视频预览图为第一帧
+            video.addEventListener('loadeddata', function() {
+                video.currentTime = 1; // 设置到第1秒，避免黑屏
+            }, { once: true });
+
             // 开始加载视频
             video.load();
             video.play().catch(error => {
@@ -228,9 +233,39 @@
                 if (progress < 100) {
                     setTimeout(pollProgress, 100);  // 每100ms更新一次
                 } else {
-                    // 下载完成，刷新页面显示新视频
+                    // 下载完成后的处理
+                    progressText.textContent = "下载完成！正在刷新...";
+                    progressBar.style.backgroundColor = '#10B981'; // 变成绿色
+                    
+                    // 清空输入框
+                    document.getElementById('video-url').value = '';
+                    
+                    // 延迟一秒后刷新，让用户看到完成状态
                     setTimeout(() => {
-                        location.reload();
+                        // 使用fetch请求新数据而不是刷新整个页面
+                        fetch(window.location.href)
+                            .then(response => response.text())
+                            .then(html => {
+                                // 解析新的HTML
+                                const parser = new DOMParser();
+                                const newDoc = parser.parseFromString(html, 'text/html');
+                                
+                                // 更新视频列表部分
+                                const currentList = document.querySelector('.grid');
+                                const newList = newDoc.querySelector('.grid');
+                                if (currentList && newList) {
+                                    currentList.innerHTML = newList.innerHTML;
+                                }
+                                
+                                // 隐藏进度条
+                                setTimeout(() => {
+                                    progressContainer.classList.add('hidden');
+                                }, 1000);
+                            })
+                            .catch(error => {
+                                console.error('更新失败:', error);
+                                location.reload(); // 如果失败则强制刷新
+                            });
                     }, 1000);
                 }
                 

@@ -78,7 +78,7 @@ async def download_video(url: str, db: Session):
     try:
         logger.info(f"开始下载视频: {url}")
         
-        # yt-dlp配置
+        # yt-dlp基础配置
         ydl_opts = {
             'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'merge_output_format': 'mp4',
@@ -102,23 +102,25 @@ async def download_video(url: str, db: Session):
                 'Sec-Fetch-Mode': 'navigate',
             },
             'nocheckcertificate': True,
+            'outtmpl_thumbnail': 'static/thumbnails/%(id)s.%(ext)s',
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
         }
 
         # 如果有ffmpeg，添加缩略图处理
         if HAS_FFMPEG:
-            ydl_opts.update({
-                'outtmpl_thumbnail': 'static/thumbnails/%(id)s.jpg',
-                'postprocessors': [
-                    {
-                        'key': 'FFmpegVideoConvertor',
-                        'preferedformat': 'mp4',
-                    },
-                    {
-                        'key': 'FFmpegThumbnailsConvertor',
-                        'format': 'jpg',
-                    }
-                ],
-            })
+            ydl_opts['postprocessors'].extend([
+                {
+                    'key': 'FFmpegThumbnailsConvertor',
+                    'format': 'jpg',
+                },
+                {
+                    'key': 'ThumbnailsConvertor',  # 确保缩略图转换为jpg
+                    'format': 'jpg',
+                }
+            ])
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
@@ -161,18 +163,31 @@ async def download_video(url: str, db: Session):
                     file_size=round(actual_size, 2)  # 保留两位小数
                 )
                 
-                # 如果没有ffmpeg，尝试使用原始缩略图
-                if not HAS_FFMPEG:
-                    try:
-                        # 检查是否有webp缩略图
-                        webp_thumb = f"videos/{video_id}.webp"
-                        jpg_thumb = f"static/thumbnails/{video_id}.jpg"
-                        if os.path.exists(webp_thumb):
-                            # 直接移动webp文件作为缩略图
-                            shutil.move(webp_thumb, f"static/thumbnails/{video_id}.webp")
-                            logger.info("使用原始webp缩略图")
-                    except Exception as e:
-                        logger.warning(f"处理缩略图失败: {str(e)}")
+                # 处理缩略图
+                thumbnail_path = None
+                for ext in ['jpg', 'webp', 'png']:
+                    temp_thumb = f"static/thumbnails/{video_id}.{ext}"
+                    if os.path.exists(temp_thumb):
+                        thumbnail_path = temp_thumb
+                        break
+                
+                if thumbnail_path:
+                    logger.info(f"找到缩略图: {thumbnail_path}")
+                    if not thumbnail_path.endswith('.jpg'):
+                        # 如果有ffmpeg，尝试转换为jpg
+                        if HAS_FFMPEG:
+                            try:
+                                import subprocess
+                                output_path = f"static/thumbnails/{video_id}.jpg"
+                                subprocess.run(['ffmpeg', '-i', thumbnail_path, '-y', output_path], 
+                                            check=True, capture_output=True)
+                                logger.info(f"缩略图转换成功: {output_path}")
+                                # 删除原始缩略图
+                                os.remove(thumbnail_path)
+                            except Exception as e:
+                                logger.error(f"缩略图转换失败: {str(e)}")
+                else:
+                    logger.warning("未找到缩略图")
                 
                 # 保存到数据库
                 db.add(video)
