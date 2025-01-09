@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube视频下载器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">YouTube视频下载器</h1>
+            <p class="text-gray-600">输入YouTube视频链接，轻松下载高质量视频</p>
+        </div>
+        
+        <!-- 下载表单 -->
+        <div class="max-w-2xl mx-auto mb-12">
+            <div class="flex gap-4">
+                <input type="text" id="video-url" 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    placeholder="输入YouTube视频链接...">
+                <button onclick="startDownload()" 
+                    class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    下载
+                </button>
+            </div>
+            
+            <!-- 下载进度 -->
+            <div id="progress-container" class="mt-4 hidden">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar-fill" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div id="progress-text" class="text-center text-sm text-gray-600 mt-2">0%</div>
+            </div>
+        </div>
+
+        <!-- 视频列表 -->
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">已下载视频</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for video in videos %}
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    <!-- 视频预览容器 -->
+                    <div class="relative aspect-video bg-gray-100 group cursor-pointer">
+                        {% set video_id = video.file_path.split('/')[-1].split('.')[0] %}
+                        <video 
+                            class="w-full h-full object-cover"
+                            poster="/static/thumbnails/{{ video_id }}.{% if video_id in webp_files %}webp{% else %}jpg{% endif %}"
+                            preload="none"
+                            controls
+                            controlsList="nodownload"
+                            id="video-{{ video_id }}"
+                            onplay="hideOverlay(this)"
+                            onpause="showOverlay(this)"
+                            onended="showOverlay(this)"
+                            onerror="handleVideoError(this)"
+                        >
+                            <source src="/{{ video.file_path }}" type="video/mp4">
+                            <p class="text-red-500 p-4">视频加载失败，请刷新页面重试</p>
+                        </video>
+                        <!-- 播放按钮遮罩 -->
+                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"
+                             id="overlay-{{ video_id }}"
+                             onclick="playVideo('{{ video_id }}')">
+                            <div class="w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <!-- 加载指示器 -->
+                        <div class="absolute inset-0 bg-gray-100 flex items-center justify-center" 
+                             id="loading-{{ video_id }}"
+                             style="display: none;">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 视频信息 -->
+                    <div class="p-4">
+                        <h3 class="font-medium text-gray-900 mb-2 line-clamp-2">{{ video.title }}</h3>
+                        <div class="space-y-1 text-sm text-gray-600">
+                            <p>{{ video.author }}</p>
+                            <p>{{ video.duration // 60 }}分{{ video.duration % 60 }}秒 · {{ "%.1f"|format(video.file_size) }}MB</p>
+                            
+                            <!-- 更多信息下拉框 -->
+                            <details class="mt-2">
+                                <summary class="cursor-pointer text-blue-500 hover:text-blue-600 text-sm">更多信息</summary>
+                                <div class="mt-2 p-3 bg-gray-50 rounded-lg text-xs">
+                                    <p class="mb-1"><span class="font-medium">存储路径:</span> {{ video.file_path }}</p>
+                                    <p class="whitespace-pre-wrap"><span class="font-medium">描述:</span> {{ video.description }}</p>
+                                </div>
+                            </details>
+                            
+                            <!-- 下载按钮 -->
+                            <button onclick="downloadVideo('{{ video.file_path }}')"
+                                    class="mt-3 inline-flex items-center text-sm text-blue-500 hover:text-blue-600 focus:outline-none">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                下载视频
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVideoId = null;
+
+        // 视频播放控制
+        function playVideo(videoId) {
+            const video = document.getElementById(`video-${videoId}`);
+            const loading = document.getElementById(`loading-${videoId}`);
+            const overlay = document.getElementById(`overlay-${videoId}`);
+
+            // 显示加载指示器
+            loading.style.display = 'flex';
+            overlay.style.display = 'none';
+
+            // 开始加载视频
+            video.load();
+            video.play().catch(error => {
+                console.error('播放错误:', error);
+                loading.style.display = 'none';
+                overlay.style.display = 'flex';
+                alert('视频播放失败，请稍后重试');
+            });
+        }
+
+        function hideOverlay(video) {
+            const videoId = video.id.split('video-')[1];
+            const loading = document.getElementById(`loading-${videoId}`);
+            const overlay = document.getElementById(`overlay-${videoId}`);
+            loading.style.display = 'none';
+            overlay.style.display = 'none';
+        }
+
+        function showOverlay(video) {
+            const videoId = video.id.split('video-')[1];
+            const overlay = document.getElementById(`overlay-${videoId}`);
+            overlay.style.display = 'flex';
+        }
+
+        function handleVideoError(video) {
+            const videoId = video.id.split('video-')[1];
+            const loading = document.getElementById(`loading-${videoId}`);
+            const overlay = document.getElementById(`overlay-${videoId}`);
+            loading.style.display = 'none';
+            overlay.style.display = 'flex';
+            alert('视频加载失败，请刷新页面重试');
+        }
+
+        // 视频下载处理
+        function downloadVideo(filePath) {
+            const link = document.createElement('a');
+            link.href = `/${filePath}`;
+            link.download = filePath.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function startDownload() {
+            const urlInput = document.getElementById('video-url');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                alert('请输入视频链接');
+                return;
+            }
+
+            // 显示进度条
+            const progressContainer = document.getElementById('progress-container');
+            progressContainer.classList.remove('hidden');
+            
+            try {
+                // 创建FormData对象
+                const formData = new FormData();
+                formData.append('url', url);
+                
+                // 开始下载
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || '下载请求失败');
+                }
+
+                // 提取视频ID
+                const videoId = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/)?.[1];
+                if (videoId) {
+                    currentVideoId = videoId;
+                    pollProgress();
+                }
+                
+            } catch (error) {
+                alert(error.message);
+                progressContainer.classList.add('hidden');
+            }
+        }
+
+        async function pollProgress() {
+            if (!currentVideoId) return;
+
+            try {
+                const response = await fetch(`/progress/${currentVideoId}`);
+                const data = await response.json();
+                
+                // 更新进度条
+                const progress = data.progress || 0;
+                const progressBar = document.getElementById('progress-bar-fill');
+                const progressText = document.getElementById('progress-text');
+                
+                // 平滑更新进度条
+                progressBar.style.transition = 'width 100ms linear';
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${Math.round(progress)}%`;
+                
+                // 如果下载未完成，继续轮询
+                if (progress < 100) {
+                    setTimeout(pollProgress, 100);  // 每100ms更新一次
+                } else {
+                    // 下载完成，刷新页面显示新视频
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                }
+                
+            } catch (error) {
+                console.error('获取进度失败:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

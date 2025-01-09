@@ -1,0 +1,167 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: #2c3e50;
+    margin: 20px 0;
+}
+
+/* 下载表单 */
+.download-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+/* 进度条 */
+#progress-container {
+    margin: 20px 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#progress-bar-fill {
+    width: 0;
+    height: 100%;
+    background-color: #2ecc71;
+    transition: width 0.3s ease;
+}
+
+#progress-text {
+    text-align: center;
+    margin-top: 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* 视频列表 */
+.video-list {
+    display: grid;
+    gap: 20px;
+}
+
+.video-item {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+}
+
+.video-preview {
+    padding: 10px;
+}
+
+.video-preview video {
+    width: 100%;
+    border-radius: 4px;
+}
+
+.video-info {
+    padding: 20px 20px 20px 0;
+}
+
+.video-info h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.video-info p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.video-info strong {
+    color: #333;
+}
+
+details {
+    margin-top: 10px;
+}
+
+summary {
+    cursor: pointer;
+    color: #3498db;
+    margin-bottom: 5px;
+}
+
+details p {
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-top: 5px;
+    white-space: pre-wrap;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .video-item {
+        grid-template-columns: 1fr;
+    }
+    
+    .video-info {
+        padding: 20px;
+    }
+    
+    .download-form {
+        flex-direction: column;
+    }
+    
+    button {
+        width: 100%;
+    }
+} 
