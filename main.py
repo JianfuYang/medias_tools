@@ -10,7 +10,7 @@ import yt_dlp
 from database import get_db, Video
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import uvicorn
 
 # 配置日志
@@ -257,13 +257,33 @@ async def download_video(url: str, db: Session):
 async def home(request: Request, db: Session = Depends(get_db)):
     """主页"""
     logger.info("访问主页")
+    
+    # 获取最近一周的日期范围
+    today = datetime.now()
+    dates = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+    
+    # 获取所有视频
     videos = db.query(Video).all()
+    
+    # 按日期分组视频
+    videos_by_date = {}
+    for date in dates:
+        videos_by_date[date] = []
+    
+    for video in videos:
+        # 从文件路径中提取日期
+        video_date = '/'.join(video.file_path.split('/')[1:2])  # videos/2024-01-09/xxx.mp4 -> 2024-01-09
+        if video_date in dates:  # 只保留最近一周的视频
+            videos_by_date[video_date].append(video)
+    
+    # 移除空的日期组
+    videos_by_date = {k: v for k, v in videos_by_date.items() if v}
     
     # 检查每个视频的缩略图格式和路径
     video_info = {}
     for video in videos:
         video_id = video.file_path.split('/')[-1].split('.')[0]
-        date_folder = '/'.join(video.file_path.split('/')[:-1])  # 获取日期文件夹路径
+        date_folder = '/'.join(video.file_path.split('/')[:-1])
         video_info[video_id] = {
             'date_folder': date_folder,
             'has_webp': os.path.exists(f"{date_folder}/thumbnails/{video_id}.webp")
@@ -273,8 +293,9 @@ async def home(request: Request, db: Session = Depends(get_db)):
         "index.html",
         {
             "request": request, 
-            "videos": videos,
-            "video_info": video_info
+            "videos_by_date": videos_by_date,
+            "video_info": video_info,
+            "today": today.strftime('%Y-%m-%d')
         }
     )
 
