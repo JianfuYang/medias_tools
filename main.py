@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 from fastapi import FastAPI, Request, Depends, BackgroundTasks, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -73,6 +74,38 @@ def progress_hook(d):
     except Exception as e:
         logger.error(f"进度处理错误: {str(e)}")
 
+def extract_thumbnail(video_path: str, output_path: str) -> bool:
+    """从视频中提取缩略图"""
+    try:
+        subprocess.run([
+            'ffmpeg',
+            '-i', video_path,
+            '-ss', '00:00:01',  # 从1秒处开始
+            '-vframes', '1',    # 只提取1帧
+            '-vf', 'scale=640:-1',  # 设置宽度为640，高度自适应
+            '-y',
+            output_path
+        ], check=True, capture_output=True)
+        return True
+    except Exception as e:
+        logger.error(f"提取缩略图失败: {str(e)}")
+        return False
+
+def convert_thumbnail(input_path: str, output_path: str) -> bool:
+    """转换缩略图格式"""
+    try:
+        subprocess.run([
+            'ffmpeg',
+            '-i', input_path,
+            '-vf', 'scale=640:-1',  # 统一缩略图尺寸
+            '-y',
+            output_path
+        ], check=True, capture_output=True)
+        return True
+    except Exception as e:
+        logger.error(f"转换缩略图失败: {str(e)}")
+        return False
+
 async def download_video(url: str, db: Session):
     """后台下载视频"""
     try:
@@ -109,19 +142,6 @@ async def download_video(url: str, db: Session):
             }],
         }
 
-        # 如果有ffmpeg，添加缩略图处理
-        if HAS_FFMPEG:
-            ydl_opts['postprocessors'].extend([
-                {
-                    'key': 'FFmpegThumbnailsConvertor',
-                    'format': 'jpg',
-                },
-                {
-                    'key': 'ThumbnailsConvertor',  # 确保缩略图转换为jpg
-                    'format': 'jpg',
-                }
-            ])
-        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
                 # 获取视频信息
@@ -165,6 +185,9 @@ async def download_video(url: str, db: Session):
                 
                 # 处理缩略图
                 thumbnail_path = None
+                output_path = f"static/thumbnails/{video_id}.jpg"
+                
+                # 1. 首先检查是否已有缩略图
                 for ext in ['jpg', 'webp', 'png']:
                     temp_thumb = f"static/thumbnails/{video_id}.{ext}"
                     if os.path.exists(temp_thumb):
@@ -174,20 +197,16 @@ async def download_video(url: str, db: Session):
                 if thumbnail_path:
                     logger.info(f"找到缩略图: {thumbnail_path}")
                     if not thumbnail_path.endswith('.jpg'):
-                        # 如果有ffmpeg，尝试转换为jpg
-                        if HAS_FFMPEG:
-                            try:
-                                import subprocess
-                                output_path = f"static/thumbnails/{video_id}.jpg"
-                                subprocess.run(['ffmpeg', '-i', thumbnail_path, '-y', output_path], 
-                                            check=True, capture_output=True)
-                                logger.info(f"缩略图转换成功: {output_path}")
-                                # 删除原始缩略图
-                                os.remove(thumbnail_path)
-                            except Exception as e:
-                                logger.error(f"缩略图转换失败: {str(e)}")
+                        # 转换为jpg格式
+                        if convert_thumbnail(thumbnail_path, output_path):
+                            logger.info(f"缩略图转换成功: {output_path}")
+                            os.remove(thumbnail_path)  # 删除原始缩略图
+                        else:
+                            logger.warning("缩略图转换失败，尝试从视频提取")
+                            extract_thumbnail(expected_file, output_path)
                 else:
-                    logger.warning("未找到缩略图")
+                    logger.info("未找到缩略图，从视频中提取...")
+                    extract_thumbnail(expected_file, output_path)
                 
                 # 保存到数据库
                 db.add(video)
