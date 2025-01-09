@@ -12,6 +12,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 import uvicorn
+import json
 
 # 配置日志
 logging.basicConfig(
@@ -279,22 +280,15 @@ async def home(request: Request, db: Session = Depends(get_db)):
     # 移除空的日期组
     videos_by_date = {k: v for k, v in videos_by_date.items() if v}
     
-    # 检查每个视频的缩略图格式和路径
-    video_info = {}
-    for video in videos:
-        video_id = video.file_path.split('/')[-1].split('.')[0]
-        date_folder = '/'.join(video.file_path.split('/')[:-1])
-        video_info[video_id] = {
-            'date_folder': date_folder,
-            'has_webp': os.path.exists(f"{date_folder}/thumbnails/{video_id}.webp")
-        }
+    # 创建一个简化的日期字典用于JavaScript
+    dates_for_js = {date: True for date in videos_by_date.keys()}
     
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request, 
             "videos_by_date": videos_by_date,
-            "video_info": video_info,
+            "dates_for_js": json.dumps(dates_for_js),  # 预先序列化为JSON字符串
             "today": today.strftime('%Y-%m-%d')
         }
     )
@@ -319,6 +313,27 @@ async def get_progress(video_id: str):
     progress = download_progress.get(video_id, 0)
     logger.info(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
     return {"progress": progress} 
+
+@app.get("/batch")
+async def batch_page(request: Request):
+    """批量下载页面"""
+    return templates.TemplateResponse("batch.html", {"request": request})
+
+@app.get("/history")
+async def history_page(request: Request):
+    """下载历史页面"""
+    return templates.TemplateResponse("history.html", {
+        "request": request,
+        "message": "下载历史功能即将推出！"
+    })
+
+@app.get("/settings")
+async def settings_page(request: Request):
+    """设置页面"""
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "message": "设置功能即将推出！"
+    })
 
 if __name__ == "__main__":
     # 设置调试配置
