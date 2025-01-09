@@ -106,16 +106,36 @@ def convert_thumbnail(input_path: str, output_path: str) -> bool:
         logger.error(f"转换缩略图失败: {str(e)}")
         return False
 
+def get_date_folder():
+    """获取当前日期的文件夹路径"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    folder_path = f"videos/{today}"
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path
+
+def get_media_paths(video_id: str, date_folder: str):
+    """获取媒体文件路径"""
+    return {
+        'video': f"{date_folder}/{video_id}.mp4",
+        'audio': f"{date_folder}/{video_id}.m4a",
+        'thumbnail': f"{date_folder}/thumbnails/{video_id}.jpg",
+        'info': f"{date_folder}/{video_id}.info.json"
+    }
+
 async def download_video(url: str, db: Session):
     """后台下载视频"""
     try:
         logger.info(f"开始下载视频: {url}")
         
+        # 创建日期文件夹
+        date_folder = get_date_folder()
+        os.makedirs(f"{date_folder}/thumbnails", exist_ok=True)
+        
         # yt-dlp基础配置
         ydl_opts = {
             'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'merge_output_format': 'mp4',
-            'outtmpl': 'videos/%(id)s.%(ext)s',
+            'outtmpl': f'{date_folder}/%(id)s.%(ext)s',
             'progress_hooks': [progress_hook],
             'quiet': False,
             'no_warnings': False,
@@ -135,15 +155,14 @@ async def download_video(url: str, db: Session):
                 'Sec-Fetch-Mode': 'navigate',
             },
             'nocheckcertificate': True,
-            'outtmpl_thumbnail': 'static/thumbnails/%(id)s.%(ext)s',
-            'keepvideo': True,  # 保留原始视频文件
+            'outtmpl_thumbnail': f'{date_folder}/thumbnails/%(id)s.%(ext)s',
+            'keepvideo': True,
             'postprocessors': [
                 {
                     'key': 'FFmpegVideoConvertor',
                     'preferedformat': 'mp4',
                 },
                 {
-                    # 提取音频
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'm4a',
                     'preferredquality': '192',
@@ -162,6 +181,9 @@ async def download_video(url: str, db: Session):
                 video_id = info['id']
                 logger.info(f"视频信息: {info.get('title', 'Unknown Title')}")
                 
+                # 获取所有相关文件路径
+                paths = get_media_paths(video_id, date_folder)
+                
                 # 重置进度
                 download_progress[video_id] = 0
                 
@@ -173,12 +195,11 @@ async def download_video(url: str, db: Session):
                 logger.info("文件下载完成")
                 
                 # 检查文件是否存在并获取实际文件大小
-                expected_file = f"videos/{video_id}.mp4"
-                if not os.path.exists(expected_file):
+                if not os.path.exists(paths['video']):
                     raise Exception("下载完成但找不到视频文件")
                 
                 # 计算实际文件大小
-                actual_size = os.path.getsize(expected_file) / (1024 * 1024)  # 转换为MB
+                actual_size = os.path.getsize(paths['video']) / (1024 * 1024)  # 转换为MB
                 logger.info(f"计算文件大小: {actual_size}MB")
                 
                 # 准备视频信息
@@ -188,34 +209,18 @@ async def download_video(url: str, db: Session):
                     duration=info.get('duration', 0),
                     description=info.get('description', '无描述'),
                     youtube_url=url,
-                    file_path=expected_file,
-                    file_size=round(actual_size, 2)  # 保留两位小数
+                    file_path=paths['video'],
+                    audio_path=paths['audio'],
+                    thumbnail_path=paths['thumbnail'],
+                    file_size=round(actual_size, 2)
                 )
                 
                 # 处理缩略图
-                thumbnail_path = None
-                output_path = f"static/thumbnails/{video_id}.jpg"
-                
-                # 1. 首先检查是否已有缩略图
-                for ext in ['jpg', 'webp', 'png']:
-                    temp_thumb = f"static/thumbnails/{video_id}.{ext}"
-                    if os.path.exists(temp_thumb):
-                        thumbnail_path = temp_thumb
-                        break
-                
-                if thumbnail_path:
-                    logger.info(f"找到缩略图: {thumbnail_path}")
-                    if not thumbnail_path.endswith('.jpg'):
-                        # 转换为jpg格式
-                        if convert_thumbnail(thumbnail_path, output_path):
-                            logger.info(f"缩略图转换成功: {output_path}")
-                            os.remove(thumbnail_path)  # 删除原始缩略图
-                        else:
-                            logger.warning("缩略图转换失败，尝试从视频提取")
-                            extract_thumbnail(expected_file, output_path)
+                if os.path.exists(paths['thumbnail']):
+                    logger.info(f"缩略图已存在: {paths['thumbnail']}")
                 else:
-                    logger.info("未找到缩略图，从视频中提取...")
-                    extract_thumbnail(expected_file, output_path)
+                    logger.info("从视频中提取缩略图...")
+                    extract_thumbnail(paths['video'], paths['thumbnail'])
                 
                 # 保存到数据库
                 db.add(video)
@@ -254,19 +259,22 @@ async def home(request: Request, db: Session = Depends(get_db)):
     logger.info("访问主页")
     videos = db.query(Video).all()
     
-    # 检查每个视频的缩略图格式
-    webp_files = set()
+    # 检查每个视频的缩略图格式和路径
+    video_info = {}
     for video in videos:
         video_id = video.file_path.split('/')[-1].split('.')[0]
-        if os.path.exists(f"static/thumbnails/{video_id}.webp"):
-            webp_files.add(video_id)
+        date_folder = '/'.join(video.file_path.split('/')[:-1])  # 获取日期文件夹路径
+        video_info[video_id] = {
+            'date_folder': date_folder,
+            'has_webp': os.path.exists(f"{date_folder}/thumbnails/{video_id}.webp")
+        }
     
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request, 
             "videos": videos,
-            "webp_files": webp_files
+            "video_info": video_info
         }
     )
 
