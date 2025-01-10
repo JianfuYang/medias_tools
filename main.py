@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timedelta
 import uvicorn
 import json
-from batch_downloader import start_batch_download, get_batch_progress, batch_progress
+from batch_downloader import start_batch_download, get_batch_progress, batch_progress, router as batch_router
 from sqlalchemy import desc
 from itertools import groupby
 from operator import attrgetter
@@ -53,7 +53,7 @@ os.makedirs("batch_videos", exist_ok=True)  # 添加批量下载目录
 # 挂载静态文件和模板
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/videos", StaticFiles(directory="videos"), name="videos")
-app.mount("/videos/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")  # 挂载批量下载目录
+app.mount("/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")  # 直接挂载到根路径
 templates = Jinja2Templates(directory="templates")
 
 # 存储下载进度
@@ -359,11 +359,12 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
                 'id': video.id,
                 'title': video.title,
                 'youtube_url': video.youtube_url,
-                'file_path': video.file_path,  # 修正路径
-                'thumbnail_path': video.thumbnail_path,  # 修正路径
+                'file_path': video.file_path,
+                'audio_path': video.audio_path,
+                'thumbnail_path': video.thumbnail_path,
                 'duration': video.duration,
                 'file_size': video.file_size,
-                'author': username,  # 使用username作为作者名
+                'author': username,
                 'upload_time': video.upload_time,
                 'description': video.description,
                 'status': video.status,
@@ -376,14 +377,14 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         
         # 构建排序后的数据结构
         sorted_videos = {}
-        for date in sorted_dates:
-            sorted_videos[date] = {}
+        for date_str in sorted_dates:
+            sorted_videos[date_str] = {}
             # 对每个日期下的用户进行排序
-            sorted_authors = sorted(videos_by_date[date].keys())
+            sorted_authors = sorted(videos_by_date[date_str].keys())
             for author in sorted_authors:
                 # 对每个用户的视频按上传时间排序（如果有）
-                sorted_videos[date][author] = sorted(
-                    videos_by_date[date][author],
+                sorted_videos[date_str][author] = sorted(
+                    videos_by_date[date_str][author],
                     key=lambda x: x.get('upload_time', ''),
                     reverse=True
                 )
@@ -467,6 +468,9 @@ async def settings_page(request: Request):
         "request": request,
         "message": "设置功能即将推出！"
     })
+
+# 注册batch_downloader的路由器
+app.include_router(batch_router)
 
 if __name__ == "__main__":
     # 设置调试配置

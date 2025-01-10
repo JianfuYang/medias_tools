@@ -10,6 +10,12 @@ from database import BatchVideo, get_batch_db
 from sqlalchemy.orm import Session
 import subprocess
 import urllib.parse
+from urllib.parse import unquote
+from fastapi import HTTPException, APIRouter
+from starlette.responses import FileResponse
+
+# 创建路由器
+router = APIRouter()
 
 # 配置日志
 logging.basicConfig(
@@ -38,7 +44,7 @@ def get_media_paths(video_id: str, date_folder: str):
     """获取媒体文件路径"""
     return {
         'video': f"{date_folder}/{video_id}.mp4",
-        'audio': f"{date_folder}/{video_id}.m4a",
+        'audio': f"{date_folder}/{video_id}.f140.m4a",
         'thumbnail': f"{date_folder}/{video_id}.jpg",
         'info': f"{date_folder}/{video_id}.info.json"
     }
@@ -102,10 +108,17 @@ async def download_batch_video(video_url: str, channel_id: str, db: Session):
             },
             'nocheckcertificate': True,
             'keepvideo': True,
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
-            }]
+            'postprocessors': [
+                {
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                },
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'm4a',
+                    'preferredquality': '192',
+                }
+            ]
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -489,3 +502,15 @@ def get_batch_progress(channel_id: str = None):
         progress for progress in batch_progress.values()
         if progress.get('channel_id') == channel_id
     ] 
+
+@router.get("/batch_videos/{date}/{username}/{filename}")
+async def get_batch_video(date: str, username: str, filename: str):
+    # 解码URL编码的路径参数
+    decoded_username = unquote(username)
+    file_path = os.path.join("batch_videos", date, decoded_username, filename)
+    
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(file_path) 
