@@ -1,3 +1,4 @@
+from http.client import HTTPException
 import os
 import shutil
 import subprocess
@@ -7,12 +8,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import yt_dlp
-from database import get_db, Video
+from database import get_db, get_batch_db, Video, BatchVideo
 import asyncio
 import logging
 from datetime import datetime, timedelta
 import uvicorn
 import json
+from batch_downloader import start_batch_download, get_batch_progress, batch_progress
+from sqlalchemy import desc
+from itertools import groupby
+from operator import attrgetter
+import urllib.parse
 
 # 配置日志
 logging.basicConfig(
@@ -42,10 +48,12 @@ os.makedirs("static", exist_ok=True)
 os.makedirs("static/css", exist_ok=True)
 os.makedirs("static/thumbnails", exist_ok=True)
 os.makedirs("videos", exist_ok=True)
+os.makedirs("batch_videos", exist_ok=True)  # 添加批量下载目录
 
 # 挂载静态文件和模板
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/videos", StaticFiles(directory="videos"), name="videos")
+app.mount("/videos/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")  # 挂载批量下载目录
 templates = Jinja2Templates(directory="templates")
 
 # 存储下载进度
@@ -321,9 +329,128 @@ async def get_progress(video_id: str):
     return {"progress": progress} 
 
 @app.get("/batch")
-async def batch_page(request: Request):
+async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
     """批量下载页面"""
-    return templates.TemplateResponse("batch.html", {"request": request})
+    try:
+        # 获取所有视频记录
+        videos = db.query(BatchVideo).all()
+        
+        # 按日期和用户分组的视频字典
+        videos_by_date = {}
+        
+        for video in videos:
+            # 从文件路径中提取日期
+            date_str = video.file_path.split('/')[1]  # batch_videos/2025-01-10/user/video.mp4
+            
+            # 初始化日期分组
+            if date_str not in videos_by_date:
+                videos_by_date[date_str] = {}
+            
+            # 使用channel_id作为用户分组（确保以@开头）
+            username = video.channel_id
+            if username and not username.startswith('@'):
+                username = f"@{username}"
+            
+            if username not in videos_by_date[date_str]:
+                videos_by_date[date_str][username] = []
+            
+            # 添加视频信息
+            video_info = {
+                'id': video.id,
+                'title': video.title,
+                'youtube_url': video.youtube_url,
+                'file_path': video.file_path,  # 修正路径
+                'thumbnail_path': video.thumbnail_path,  # 修正路径
+                'duration': video.duration,
+                'file_size': video.file_size,
+                'author': username,  # 使用username作为作者名
+                'upload_time': video.upload_time,
+                'description': video.description,
+                'status': video.status,
+                'error_message': video.error_message
+            }
+            videos_by_date[date_str][username].append(video_info)
+        
+        # 对日期进行排序（降序）
+        sorted_dates = sorted(videos_by_date.keys(), reverse=True)
+        
+        # 构建排序后的数据结构
+        sorted_videos = {}
+        for date in sorted_dates:
+            sorted_videos[date] = {}
+            # 对每个日期下的用户进行排序
+            sorted_authors = sorted(videos_by_date[date].keys())
+            for author in sorted_authors:
+                # 对每个用户的视频按上传时间排序（如果有）
+                sorted_videos[date][author] = sorted(
+                    videos_by_date[date][author],
+                    key=lambda x: x.get('upload_time', ''),
+                    reverse=True
+                )
+        
+        return templates.TemplateResponse(
+            "batch.html",
+            {
+                "request": request,
+                "videos_by_date": sorted_videos
+            }
+        )
+    except Exception as e:
+        logger.error(f"获取批量下载页面失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/batch/download")
+async def start_batch(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_batch_db)
+):
+    """开始批量下载"""
+    try:
+        data = await request.json()
+        channel_url = data.get('channel_url')
+        channel_url = urllib.parse.unquote(channel_url)
+        
+        if not channel_url:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "请提供YouTube用户主页链接"}
+            )
+        
+        # 启动批量下载任务
+        background_tasks.add_task(start_batch_download, channel_url, db)
+        return {"message": "开始批量下载"}
+        
+    except Exception as e:
+        logger.error(f"批量下载请求失败: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={"message": f"批量下载失败: {str(e)}"}
+        )
+
+@app.get("/batch/progress/{channel_id}")
+async def get_batch_progress_route(channel_id: str):
+    """获取批量下载进度"""
+    try:
+        # 从数据库获取该频道的所有视频
+        db = next(get_batch_db())
+        total_videos = db.query(BatchVideo).filter(BatchVideo.channel_id == channel_id).count()
+        completed_videos = db.query(BatchVideo).filter(
+            BatchVideo.channel_id == channel_id,
+            BatchVideo.status == 'completed'
+        ).count()
+
+        # 获取当前正在下载的视频进度
+        current_progress = get_batch_progress(channel_id)
+
+        return {
+            'total_videos': total_videos,
+            'downloaded_videos': completed_videos,
+            'videos': current_progress
+        }
+    except Exception as e:
+        logger.error(f"获取下载进度失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history")
 async def history_page(request: Request):

@@ -6,3 +6,5 @@ videos/
 *.db
 *.log
 static/
+batch_videos/
+
