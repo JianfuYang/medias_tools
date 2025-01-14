@@ -442,7 +442,7 @@ async def get_batch_progress_route(channel_id: str):
         ).count()
 
         # 获取当前正在下载的视频进度
-        current_progress = get_batch_progress(channel_id)
+        current_progress = await get_batch_progress(channel_id)
 
         return {
             'total_videos': total_videos,
