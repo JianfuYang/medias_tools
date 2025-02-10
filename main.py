@@ -264,40 +264,38 @@ async def download_video(url: str, db: Session):
                 del download_progress[video_id]
 
 @app.get("/")
-async def home(request: Request, db: Session = Depends(get_db)):
-    """主页"""
-    logger.info("访问主页")
+async def home(request: Request):
+    """工具库主页"""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/youtube")
+async def youtube(request: Request, db: Session = Depends(get_db)):
+    """YouTube下载器页面"""
+    logger.info("访问YouTube下载器")
     
-    # 获取最近一周的日期范围
     today = datetime.now()
     dates = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
     
-    # 获取所有视频
     videos = db.query(Video).all()
     
-    # 按日期分组视频
     videos_by_date = {}
     for date in dates:
         videos_by_date[date] = []
     
     for video in videos:
-        # 从文件路径中提取日期
-        video_date = '/'.join(video.file_path.split('/')[1:2])  # videos/2024-01-09/xxx.mp4 -> 2024-01-09
-        if video_date in dates:  # 只保留最近一周的视频
+        video_date = '/'.join(video.file_path.split('/')[1:2])
+        if video_date in dates:
             videos_by_date[video_date].append(video)
     
-    # 移除空的日期组
     videos_by_date = {k: v for k, v in videos_by_date.items() if v}
-    
-    # 创建一个简化的日期字典用于JavaScript
     dates_for_js = {date: True for date in videos_by_date.keys()}
     
     return templates.TemplateResponse(
-        "index.html",
+        "youtube.html",
         {
             "request": request, 
             "videos_by_date": videos_by_date,
-            "dates_for_js": json.dumps(dates_for_js),  # 预先序列化为JSON字符串
+            "dates_for_js": json.dumps(dates_for_js),
             "today": today.strftime('%Y-%m-%d')
         }
     )
@@ -467,6 +465,14 @@ async def settings_page(request: Request):
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "message": "设置功能即将推出！"
+    })
+
+@app.get("/developing")
+async def developing(request: Request):
+    """开发中页面"""
+    return templates.TemplateResponse("developing.html", {
+        "request": request,
+        "message": "该功能正在开发中，敬请期待！"
     })
 
 # 注册batch_downloader的路由器

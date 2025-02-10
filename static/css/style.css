@@ -64,4 +64,91 @@ main {
     margin-top: auto;
     background-color: #f8f9fa;
     padding: 1rem 0;
-} 
+}
+
+/* 工具卡片样式 */
+.tool-card {
+    transition: all 0.3s ease-in-out;
+}
+
+.tool-card:hover {
+    transform: translateY(-2px);
+}
+
+/* 导航栏样式 */
+.nav-item {
+    display: block;
+    color: #4b5563;
+    transition: all 0.2s ease;
+    font-weight: 400;
+}
+
+.nav-item:hover {
+    background-color: #f9fafb;
+    color: #111827;
+}
+
+.nav-item.active {
+    color: #2563eb;
+    background-color: #eff6ff;
+    border-left: 4px solid #2563eb;
+    font-weight: 500;
+}
+
+.nav-item.active .nav-icon {
+    color: #2563eb;
+}
+
+.nav-item.active .nav-text {
+    font-weight: 500;
+}
+
+/* Logo区域样式 */
+.nav-logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    border-bottom: 1px solid #5D7EFF;
+    padding: 1.25rem 1.5rem;
+}
+
+.nav-logo svg {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-right: 1rem;
+}
+
+/* 导航分组样式 */
+.nav-group {
+    padding: 1rem 0;
+}
+
+/* 导航项图标样式 */
+.nav-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-right: 1.25rem;
+    transition: color 0.2s ease;
+}
+
+/* 导航项文字样式 */
+.nav-text {
+    font-size: 1.125rem;
+    line-height: 1.5;
+}
+
+/* 导航项内容布局 */
+.nav-item > div {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.75rem;
+}
+
+/* 激活状态时的左边框偏移 */
+.nav-item.active > div {
+    padding-left: 1.5rem;
+}
+
+/* 导航栏宽度 */
+.nav-sidebar {
+    width: 280px;
+}

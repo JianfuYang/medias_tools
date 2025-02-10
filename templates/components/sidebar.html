@@ -1,0 +1,38 @@
+<!-- 左侧导航栏 -->
+<nav class="nav-sidebar bg-white shadow-lg flex flex-col">
+    <!-- Logo区域 -->
+    <div class="h-16 flex items-center px-6 bg-[#4B69FF] nav-logo">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+        <span class="ml-2 text-white">媒体效率工具库</span>
+    </div>
+    
+    <!-- 导航链接 -->
+    <div class="flex-1 overflow-y-auto">
+        <div class="nav-group">
+            <!-- 首页 -->
+            <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
+                <div class="flex items-center px-6 py-2.5">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                    </svg>
+                    <span class="nav-text">首页</span>
+                </div>
+            </a>
+            
+            <!-- YouTube下载器 -->
+            <a href="/youtube" class="nav-item {{ 'active' if request.url.path == '/youtube' else '' }}">
+                <div class="flex items-center px-6 py-2.5">
+                    <svg class="nav-icon text-red-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span class="nav-text">YouTube下载器</span>
+                </div>
+            </a>
+
+            <!-- 其他导航项... -->
+            {% include 'components/nav_items.html' %}
+        </div>
+    </div>
+</nav> 
