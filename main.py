@@ -563,39 +563,55 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         videos_by_date = {}
         
         for video in videos:
-            # 从文件路径中提取日期
-            logger.info(f"batch视频文件路径: {video.file_path}")
-            date_str = video.file_path.split('/')[3]  # toolsfile/youtube/batch_videos/2025-01-10/user/video.mp4
-            
-            # 初始化日期分组
-            if date_str not in videos_by_date:
-                videos_by_date[date_str] = {}
-            
-            # 使用channel_id作为用户分组（确保以@开头）
-            username = video.channel_id
-            if username and not username.startswith('@'):
-                username = f"@{username}"
-            
-            if username not in videos_by_date[date_str]:
-                videos_by_date[date_str][username] = []
-            
-            # 添加视频信息
-            video_info = {
-                'id': video.id,
-                'title': video.title,
-                'youtube_url': video.youtube_url,
-                'file_path': video.file_path,
-                'audio_path': video.audio_path,
-                'thumbnail_path': video.thumbnail_path,
-                'duration': video.duration,
-                'file_size': video.file_size,
-                'author': username,
-                'upload_time': video.upload_time,
-                'description': video.description,
-                'status': video.status,
-                'error_message': video.error_message
-            }
-            videos_by_date[date_str][username].append(video_info)
+            try:
+                # 从文件路径中提取日期
+                logger.info(f"batch视频文件路径: {video.file_path}")
+                date_str = video.file_path.split('/')[3]  # toolsfile/youtube/batch_videos/2025-01-10/user/video.mp4
+                
+                # 初始化日期分组
+                if date_str not in videos_by_date:
+                    videos_by_date[date_str] = {}
+                
+                # 使用channel_id作为用户分组（确保以@开头）
+                username = video.channel_id
+                
+                if username not in videos_by_date[date_str]:
+                    videos_by_date[date_str][username] = []
+                
+                # 构建文件路径 - 参考单视频下载功能的路径结构
+                file_path = video.file_path
+                if file_path and not file_path.startswith('/toolsfile'):
+                    file_path = f"/toolsfile/youtube/batch_videos/{date_str}/{username}/{os.path.basename(file_path)}"
+                
+                audio_path = video.audio_path
+                if audio_path and not audio_path.startswith('/toolsfile'):
+                    audio_path = f"/toolsfile/youtube/batch_videos/{date_str}/{username}/{os.path.basename(audio_path)}"
+                
+                thumbnail_path = video.thumbnail_path
+                if thumbnail_path and not thumbnail_path.startswith('/toolsfile'):
+                    thumbnail_path = f"/toolsfile/youtube/batch_videos/{date_str}/{username}/{os.path.basename(thumbnail_path)}"
+                
+                # 添加视频信息
+                video_info = {
+                    'id': video.id,
+                    'title': video.title,
+                    'youtube_url': video.youtube_url,
+                    'file_path': file_path,
+                    'audio_path': audio_path,
+                    'thumbnail_path': thumbnail_path,
+                    'duration': video.duration,
+                    'file_size': video.file_size,
+                    'author': username,
+                    'upload_time': video.upload_time,
+                    'description': video.description,
+                    'status': video.status,
+                    'error_message': video.error_message
+                }
+                videos_by_date[date_str][username].append(video_info)
+                
+            except Exception as e:
+                logger.error(f"处理视频记录时出错: {str(e)}")
+                continue
         
         # 对日期进行排序（降序）
         sorted_dates = sorted(videos_by_date.keys(), reverse=True)
@@ -618,7 +634,8 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
             "tools/youtube/batch.html",
             {
                 "request": request,
-                "videos_by_date": sorted_videos
+                "videos_by_date": sorted_videos,
+                "year": datetime.now().year
             }
         )
     except Exception as e:
