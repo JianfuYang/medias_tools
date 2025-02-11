@@ -8,18 +8,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 import yt_dlp
-from database import get_db, get_batch_db, Video, BatchVideo
+from core.database import get_db, get_batch_db
+from modules.youtube.models import Video, BatchVideo
 import asyncio
 import logging
 from datetime import datetime, timedelta
 import uvicorn
 import json
-from batch_downloader import start_batch_download, get_batch_progress, batch_progress, router as batch_router
 from sqlalchemy import desc
 from itertools import groupby
 from operator import attrgetter
 import urllib.parse
 from typing import List
+from modules.youtube.routes import router as youtube_router
+from config.settings import VIDEOS_DIR, BATCH_VIDEOS_DIR, STATIC_DIR
 
 # 配置日志
 logging.basicConfig(
@@ -52,9 +54,9 @@ os.makedirs("toolsfile/youtube/videos", exist_ok=True)
 os.makedirs("toolsfile/youtube/batch_videos", exist_ok=True)  # 添加批量下载目录
 
 # 挂载静态文件
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/toolsfile/youtube/videos", StaticFiles(directory="toolsfile/youtube/videos"), name="videos")
-app.mount("/toolsfile/youtube/batch_videos", StaticFiles(directory="toolsfile/youtube/batch_videos"), name="batch_videos")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/toolsfile/youtube/videos", StaticFiles(directory=VIDEOS_DIR), name="videos")
+app.mount("/toolsfile/youtube/batch_videos", StaticFiles(directory=BATCH_VIDEOS_DIR), name="batch_videos")
 
 # 配置模板
 templates = Jinja2Templates(directory="templates")
@@ -719,9 +721,6 @@ async def developing(request: Request):
         "message": "该功能正在开发中，敬请期待！"
     })
 
-# 注册batch_downloader的路由器
-app.include_router(batch_router)
-
 # 工具路由生成器
 def create_tool_route(tool_id: str):
     async def route_handler(request: Request):
@@ -743,6 +742,11 @@ def create_tool_route(tool_id: str):
 for tool_id in TOOLS_CONFIG.keys():
     if tool_id != 'youtube':  # 跳过YouTube下载器，因为它有专门的路由处理
         app.add_route(f"/tools/{tool_id}", create_tool_route(tool_id), methods=["GET"], name=tool_id)
+
+# 注册YouTube模块路由
+app.include_router(youtube_router, prefix="/tools/youtube", tags=["youtube"])
+
+# 注册其他模块的路由...
 
 if __name__ == "__main__":
     # 设置调试配置
