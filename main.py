@@ -224,7 +224,7 @@ async def download_video(url: str, db: Session):
                 # 准备视频信息
                 video = Video(
                     title=info.get('title', f'视频 {video_id}'),
-                    author=info.get('uploader', '未知作者'),
+                    author=info.get('uploader_id', '未知作者'),
                     duration=info.get('duration', 0),
                     description=info.get('description', '无描述'),
                     youtube_url=url,

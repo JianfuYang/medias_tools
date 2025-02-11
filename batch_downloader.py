@@ -177,11 +177,11 @@ def download_batch_video_sync(video_url: str, channel_id: str, db: Session):
             
             # 计算文件大小
             file_size = os.path.getsize(paths['video']) / (1024 * 1024)
-
+            logger.info(f"视频信息info: {info}")
             # 保存到数据库
             video = BatchVideo(
                 title=info.get('title', f'视频 {video_id}'),
-                author=info.get('uploader', '未知作者'),
+                author=info.get('uploader_id', '未知作者'),
                 duration=info.get('duration', 0),
                 description=info.get('description', '无描述'),
                 youtube_url=video_url,
