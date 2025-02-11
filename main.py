@@ -482,6 +482,10 @@ async def tool_page(request: Request, tool_name: str):
     tool_config = TOOLS_CONFIG[tool_name]
     tool_path = f"/tools/{tool_name}"
     
+    # 获取当前年份
+    current_year = datetime.now().year
+    
+    # 返回模板，并传递year参数
     return templates.TemplateResponse(
         "common/developing.html",
         {
@@ -489,7 +493,8 @@ async def tool_page(request: Request, tool_name: str):
             "current_tool": tool_path,
             "tool_name": tool_config["name"],
             "features": tool_config["features"],
-            "progress": tool_config["progress"]
+            "progress": tool_config["progress"],
+            "year": current_year  # 添加year参数
         }
     )
 

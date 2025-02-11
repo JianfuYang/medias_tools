@@ -94,12 +94,25 @@ footer {
     white-space: nowrap;
 }
 
+/* 导航项样式 */
 .nav-item {
-    @apply flex items-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200;
+    display: flex;
+    align-items: center;
+    color: #4B5563;
+    transition-property: color, background-color;
+    transition-duration: 200ms;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.nav-item:hover {
+    color: #2563EB;
+    background-color: #EFF6FF;
 }
 
 .nav-item.active {
-    @apply text-blue-600 bg-blue-50;
+    color: #2563EB;
+    background-color: #EFF6FF;
 }
 
 /* Logo区域样式 */
@@ -218,4 +231,32 @@ main {
     .container {
         max-width: 1280px;
     }
+}
+
+/* 进度条容器 */
+.progress-bar-container {
+    overflow: hidden;
+    height: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.75rem;
+    display: flex;
+    border-radius: 0.25rem;
+    background-color: #E9D5FF;
+}
+
+/* 进度条填充 */
+.progress-bar-fill {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    color: #ffffff;
+    background-color: #A855F7;
+    transition: width 0.3s ease;
+}
+
+/* 设置进度条宽度 */
+.progress-bar-fill {
+    width: attr(data-progress percentage, 0%);
 }
