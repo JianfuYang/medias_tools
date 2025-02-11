@@ -48,13 +48,13 @@ app = FastAPI(title="媒体效率工具库")
 os.makedirs("static", exist_ok=True)
 os.makedirs("static/css", exist_ok=True)
 os.makedirs("static/thumbnails", exist_ok=True)
-os.makedirs("videos", exist_ok=True)
-os.makedirs("batch_videos", exist_ok=True)  # 添加批量下载目录
+os.makedirs("toolsfile/youtube/videos", exist_ok=True)
+os.makedirs("toolsfile/youtube/batch_videos", exist_ok=True)  # 添加批量下载目录
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/videos", StaticFiles(directory="videos"), name="videos")
-app.mount("/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")
+app.mount("/toolsfile/youtube/videos", StaticFiles(directory="toolsfile/youtube/videos"), name="videos")
+app.mount("/toolsfile/youtube/batch_videos", StaticFiles(directory="toolsfile/youtube/batch_videos"), name="batch_videos")
 
 # 配置模板
 templates = Jinja2Templates(directory="templates")
@@ -128,7 +128,7 @@ def convert_thumbnail(input_path: str, output_path: str) -> bool:
 def get_date_folder():
     """获取当前日期的文件夹路径"""
     today = datetime.now().strftime('%Y-%m-%d')
-    folder_path = f"videos/{today}"
+    folder_path = f"toolsfile/youtube/videos/{today}"
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
@@ -447,7 +447,8 @@ async def youtube_page(request: Request, db: Session = Depends(get_db)):
         videos_by_date[date] = []
     
     for video in videos:
-        video_date = '/'.join(video.file_path.split('/')[1:2])
+        logger.info(f"视频文件路径: {video.file_path}")
+        video_date = '/'.join(video.file_path.split('/')[3:4])
         if video_date in dates:
             videos_by_date[video_date].append(video)
     
@@ -525,7 +526,7 @@ async def not_found(request: Request, exc):
         status_code=404
     )
 
-@app.post("/download")
+@app.post("/tools/youtube/download")
 async def start_download(url: str = Form(...), background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)):
     """开始下载视频"""
     try:
@@ -539,7 +540,7 @@ async def start_download(url: str = Form(...), background_tasks: BackgroundTasks
             content={"message": f"下载失败: {str(e)}"}
         )
 
-@app.get("/progress/{video_id}")
+@app.get("/tools/youtube/progress/{video_id}")
 async def get_progress(video_id: str):
     """获取下载进度"""
     if video_id in download_progress:
@@ -551,7 +552,7 @@ async def get_progress(video_id: str):
     logger.info(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
     return {"progress": progress} 
 
-@app.get("/batch")
+@app.get("/tools/youtube/batch")
 async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
     """批量下载页面"""
     try:
@@ -563,7 +564,8 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         
         for video in videos:
             # 从文件路径中提取日期
-            date_str = video.file_path.split('/')[1]  # batch_videos/2025-01-10/user/video.mp4
+            logger.info(f"batch视频文件路径: {video.file_path}")
+            date_str = video.file_path.split('/')[3]  # toolsfile/youtube/batch_videos/2025-01-10/user/video.mp4
             
             # 初始化日期分组
             if date_str not in videos_by_date:
@@ -613,7 +615,7 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
                 )
         
         return templates.TemplateResponse(
-            "batch.html",
+            "tools/youtube/batch.html",
             {
                 "request": request,
                 "videos_by_date": sorted_videos
@@ -623,7 +625,7 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         logger.error(f"获取批量下载页面失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/batch/download")
+@app.post("/tools/youtube/batch/download")
 async def start_batch(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -652,7 +654,7 @@ async def start_batch(
             content={"message": f"批量下载失败: {str(e)}"}
         )
 
-@app.get("/batch/progress/{channel_id}")
+@app.get("/tools/youtube/batch/progress/{channel_id}")
 async def get_batch_progress_route(channel_id: str):
     """获取批量下载进度"""
     try:
@@ -676,26 +678,26 @@ async def get_batch_progress_route(channel_id: str):
         logger.error(f"获取下载进度失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/history")
+@app.get("/tools/youtube/history")
 async def history_page(request: Request):
     """下载历史页面"""
-    return templates.TemplateResponse("history.html", {
+    return templates.TemplateResponse("tools/youtube/history.html", {
         "request": request,
         "message": "下载历史功能即将推出！"
     })
 
-@app.get("/settings")
+@app.get("/tools/youtube/settings")
 async def settings_page(request: Request):
     """设置页面"""
-    return templates.TemplateResponse("settings.html", {
+    return templates.TemplateResponse("tools/youtube/settings.html", {
         "request": request,
         "message": "设置功能即将推出！"
     })
 
-@app.get("/developing")
+@app.get("/tools/developing")
 async def developing(request: Request):
     """开发中页面"""
-    return templates.TemplateResponse("developing.html", {
+    return templates.TemplateResponse("common/developing.html", {
         "request": request,
         "message": "该功能正在开发中，敬请期待！"
     })

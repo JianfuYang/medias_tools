@@ -3,14 +3,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # 单个视频下载数据库
-SQLALCHEMY_DATABASE_URL = "sqlite:///./youtube_videos.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./dbfile/youtube/youtube_videos.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 批量下载视频数据库
-BATCH_DATABASE_URL = "sqlite:///./batch_videos.db"
+BATCH_DATABASE_URL = "sqlite:///./dbfile/youtube/batch_videos.db"
 batch_engine = create_engine(
     BATCH_DATABASE_URL, connect_args={"check_same_thread": False}
 )

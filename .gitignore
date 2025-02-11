@@ -7,4 +7,5 @@ videos/
 *.log
 static/
 batch_videos/
+.cursorrules
 

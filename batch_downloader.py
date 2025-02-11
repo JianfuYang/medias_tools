@@ -39,7 +39,7 @@ def get_date_folder(date_str: str, channel_id: str):
     # 对channel_id进行URL解码，以支持中文用户名
     decoded_channel_id = urllib.parse.unquote(channel_id)
     # 创建文件夹路径
-    folder_path = f"batch_videos/{date_str}/{decoded_channel_id}"
+    folder_path = f"toolsfile/youtube/batch_videos/{date_str}/{decoded_channel_id}"
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
@@ -423,7 +423,7 @@ async def start_batch_download(channel_url: str, db: Session):
         logger.error(f"批量下载失败: {str(e)}")
         raise Exception(f"批量下载失败: {str(e)}")
 
-@router.get("/batch/progress/{channel_id}")
+@router.get("/tools/youtube/batch/progress/{channel_id}")
 async def get_batch_progress(channel_id: str):
     """获取批量下载进度"""
     try:
@@ -457,11 +457,11 @@ async def get_batch_progress(channel_id: str):
         logger.error(f"获取下载进度失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/batch_videos/{date}/{username}/{filename}")
+@router.get("/tools/youtube/batch_videos/{date}/{username}/{filename}")
 async def get_batch_video(date: str, username: str, filename: str):
     # 解码URL编码的路径参数
     decoded_username = unquote(username)
-    file_path = os.path.join("batch_videos", date, decoded_username, filename)
+    file_path = os.path.join("toolsfile/youtube/batch_videos", date, decoded_username, filename)
     
     # 检查文件是否存在
     if not os.path.exists(file_path):

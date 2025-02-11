@@ -53,16 +53,16 @@
         <!-- 移动端菜单 -->
         <div class="sm:hidden hidden" id="mobile-menu">
             <div class="pt-2 pb-3 space-y-1">
-                <a href="/" class="bg-red-50 border-l-4 border-red-500 text-red-700 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="/tools/youtube" class="bg-red-50 border-l-4 border-red-500 text-red-700 block pl-3 pr-4 py-2 text-base font-medium">
                     单视频下载
                 </a>
-                <a href="/batch" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="/tools/youtube/batch" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
                     批量下载
                 </a>
-                <a href="/history" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="/tools/youtube/history" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
                     下载历史
                 </a>
-                <a href="/settings" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="/tools/youtube/settings" class="border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 block pl-3 pr-4 py-2 text-base font-medium">
                     设置
                 </a>
             </div>
