@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页面未找到 - 媒体效率工具库</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="flex min-h-screen">
+        <!-- 左侧导航栏 -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- 右侧内容区域 -->
+        <div class="flex-1 flex flex-col">
+            <div class="flex-1 overflow-auto">
+                <div class="flex items-center justify-center min-h-full p-8">
+                    <div class="text-center">
+                        <div class="mb-8">
+                            <svg class="w-24 h-24 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <h1 class="text-3xl font-bold text-gray-800 mb-4">404 - 页面未找到</h1>
+                        <p class="text-gray-600 mb-8">抱歉，您访问的页面不存在。</p>
+                        <a href="/" class="text-blue-600 hover:text-blue-700 font-medium">
+                            返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

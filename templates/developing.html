@@ -1,18 +1,103 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>功能开发中 - 媒体效率工具库</title>
+    <title>{{ tool_name | default('功能开发中') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen">
-    <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">🚧 功能开发中</h1>
-        <p class="text-gray-600 mb-8">该功能正在开发中，敬请期待！</p>
-        <a href="/" class="text-blue-600 hover:text-blue-700 font-medium">
-            返回首页
-        </a>
+<body class="bg-gray-50">
+    <div class="flex min-h-screen">
+        {# 左侧导航栏 #}
+        {% include 'components/sidebar.html' %}
+
+        {# 右侧内容区域 #}
+        <div class="flex-1 flex flex-col">
+            <div class="flex-1 overflow-auto">
+                {# 页面标题 #}
+                <div class="max-w-4xl mx-auto px-4 py-8">
+                    <div class="text-center mb-12">
+                        <h1 class="text-3xl font-bold text-gray-800 mb-4">
+                            {{- tool_name | default('功能开发中') -}}
+                        </h1>
+                        <div class="inline-flex items-center px-4 py-2 bg-yellow-50 text-yellow-800 rounded-full">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>功能开发中</span>
+                        </div>
+                    </div>
+
+                    {# 功能预览 #}
+                    <div class="bg-white rounded-xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-100">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <h2 class="ml-4 text-xl font-semibold text-gray-800">即将推出</h2>
+                        </div>
+                        <p class="text-gray-600 mb-6">我们正在努力开发 {{ tool_name | default('此功能') }}，以下是即将推出的主要特性：</p>
+                        <div class="space-y-4">
+                            {%- for feature in features | default([]) -%}
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mt-1 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <h3 class="font-medium text-gray-800">{{ feature.title }}</h3>
+                                    <p class="text-gray-600">{{ feature.desc }}</p>
+                                </div>
+                            </div>
+                            {%- endfor -%}
+                        </div>
+                    </div>
+
+                    {# 开发进度 #}
+                    <div class="bg-white rounded-xl shadow-sm p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-purple-100">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                </svg>
+                            </div>
+                            <h2 class="ml-4 text-xl font-semibold text-gray-800">开发进度</h2>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="relative pt-1">
+                                <div class="flex mb-2 items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-purple-600 bg-purple-200">
+                                            进行中
+                                        </span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs font-semibold inline-block text-purple-600">
+                                            {{- progress | default(0) -}}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-purple-200">
+                                    <div style="width:{{ progress | default(0) }}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# 返回按钮 #}
+                    <div class="text-center mt-8">
+                        <a href="{{ url_for('index') }}" class="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html> 

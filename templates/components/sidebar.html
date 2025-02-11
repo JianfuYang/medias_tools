@@ -12,7 +12,7 @@
     <div class="flex-1 overflow-y-auto">
         <div class="nav-group">
             <!-- 首页 -->
-            <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
+            <a href="/" class="nav-item {{ 'active' if current_tool == '/' else '' }}">
                 <div class="flex items-center px-6 py-2.5">
                     <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
@@ -22,7 +22,7 @@
             </a>
             
             <!-- YouTube下载器 -->
-            <a href="/youtube" class="nav-item {{ 'active' if request.url.path == '/youtube' else '' }}">
+            <a href="/youtube" class="nav-item {{ 'active' if current_tool == '/youtube' else '' }}">
                 <div class="flex items-center px-6 py-2.5">
                     <svg class="nav-icon text-red-600" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
