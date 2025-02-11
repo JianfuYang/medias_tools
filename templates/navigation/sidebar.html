@@ -1,0 +1,41 @@
+<!-- 左侧导航栏 -->
+<nav class="nav-sidebar bg-white shadow-lg flex flex-col w-64">
+    <!-- Logo区域 -->
+    <div class="h-16 flex items-center px-6 bg-[#4B69FF] nav-logo">
+        <svg class="w-8 h-8 text-white flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- 背景圆形 -->
+            <circle cx="16" cy="16" r="16" fill="currentColor"/>
+            
+            <!-- 媒体工具图形组合 -->
+            <g fill="#4B69FF">
+                <!-- 视频播放图标 -->
+                <path d="M12 10v12l10-6z" fill-opacity="0.9"/>
+                
+                <!-- 图片框 -->
+                <path d="M8 20v-8c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2H10c-1.1 0-2-.9-2-2z" fill-opacity="0.7" stroke="#4B69FF" stroke-width="1.5"/>
+                
+                <!-- 工具齿轮 -->
+                <path d="M24 16c0-.3 0-.6-.1-.9l1.9-1.5c.2-.1.2-.4.1-.6l-1.8-3.1c-.1-.2-.4-.3-.6-.2l-2.2.9c-.5-.4-1-.7-1.6-.9l-.3-2.3c0-.2-.2-.4-.5-.4h-3.6c-.2 0-.5.2-.5.4l-.3 2.3c-.6.2-1.1.5-1.6.9l-2.2-.9c-.2-.1-.5 0-.6.2l-1.8 3.1c-.1.2-.1.5.1.6l1.9 1.5c0 .3-.1.6-.1.9s0 .6.1.9l-1.9 1.5c-.2.1-.2.4-.1.6l1.8 3.1c.1.2.4.3.6.2l2.2-.9c.5.4 1 .7 1.6.9l.3 2.3c0 .2.2.4.5.4h3.6c.2 0 .5-.2.5-.4l.3-2.3c.6-.2 1.1-.5 1.6-.9l2.2.9c.2.1.5 0 .6-.2l1.8-3.1c.1-.2.1-.5-.1-.6l-1.9-1.5c0-.3.1-.6.1-.9z" fill-opacity="0.8"/>
+            </g>
+        </svg>
+        <span class="ml-2 text-white">媒体效率工具库</span>
+    </div>
+    
+    <!-- 导航链接 -->
+    <div class="flex-1 overflow-y-auto">
+        <div class="nav-group">
+            <!-- 首页 -->
+            <a href="/" class="nav-item {{ 'active' if current_tool == '/' else '' }}">
+                <div class="flex items-center px-6 py-2.5">
+                    <svg class="nav-icon flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                    </svg>
+                    <span class="nav-text">首页</span>
+                </div>
+            </a>
+            
+            <!-- 其他导航项... -->
+            {% include 'navigation/nav_items.html' %}
+        </div>
+    </div>
+</nav> 

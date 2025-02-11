@@ -117,31 +117,23 @@ TOOLS_CONFIG = {
 # 首页路由
 @app.route('/')
 def index():
-    # 传递当前路径为根路径，确保首页导航激活
-    return render_template('index.html', current_tool='/')
+    return render_template('home/index.html', current_tool='/')
 
 # YouTube下载器路由
 @app.route('/youtube')
 def youtube():
-    # 传递YouTube工具路径
-    return render_template('youtube.html', current_tool='/youtube')
+    return render_template('tools/youtube/index.html', current_tool='/youtube')
 
 # 处理所有工具页面的路由
 @app.route('/tools/<tool_name>')
 def tool_page(tool_name):
-    # 检查工具是否存在
     if tool_name not in TOOLS_CONFIG:
-        # 404错误时也传递current_tool
-        return render_template('404.html', current_tool=None), 404
+        return render_template('common/404.html', current_tool=None), 404
         
-    # 获取工具配置
     tool_config = TOOLS_CONFIG[tool_name]
-    
-    # 构建完整的工具路径
     tool_path = f'/tools/{tool_name}'
     
-    # 传递工具配置和路径
-    return render_template('developing.html', 
+    return render_template('common/developing.html', 
                          current_tool=tool_path,
                          tool_name=tool_config['name'],
                          features=tool_config['features'],
@@ -150,8 +142,7 @@ def tool_page(tool_name):
 # 404错误处理
 @app.errorhandler(404)
 def page_not_found(e):
-    # 404错误时传递current_tool为None
-    return render_template('404.html', current_tool=None), 404
+    return render_template('common/404.html', current_tool=None), 404
 
 if __name__ == '__main__':
     app.run(debug=True) 

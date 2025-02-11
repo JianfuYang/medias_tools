@@ -2,10 +2,10 @@ from http.client import HTTPException
 import os
 import shutil
 import subprocess
-from fastapi import FastAPI, Request, Depends, BackgroundTasks, Form
+from fastapi import FastAPI, Request, Depends, BackgroundTasks, Form, WebSocket
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 import yt_dlp
 from database import get_db, get_batch_db, Video, BatchVideo
@@ -19,6 +19,7 @@ from sqlalchemy import desc
 from itertools import groupby
 from operator import attrgetter
 import urllib.parse
+from typing import List
 
 # 配置日志
 logging.basicConfig(
@@ -41,7 +42,7 @@ def check_ffmpeg():
         logger.warning("ffmpeg未安装，某些功能可能受限")
         return False
 
-app = FastAPI()
+app = FastAPI(title="媒体效率工具库")
 
 # 创建必要的目录
 os.makedirs("static", exist_ok=True)
@@ -50,11 +51,19 @@ os.makedirs("static/thumbnails", exist_ok=True)
 os.makedirs("videos", exist_ok=True)
 os.makedirs("batch_videos", exist_ok=True)  # 添加批量下载目录
 
-# 挂载静态文件和模板
+# 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/videos", StaticFiles(directory="videos"), name="videos")
-app.mount("/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")  # 直接挂载到根路径
+app.mount("/batch_videos", StaticFiles(directory="batch_videos"), name="batch_videos")
+
+# 配置模板
 templates = Jinja2Templates(directory="templates")
+
+# 添加模板上下文处理器
+@app.middleware("http")
+async def add_template_context(request: Request, call_next):
+    response = await call_next(request)
+    return response
 
 # 存储下载进度
 download_progress = {}
@@ -263,14 +272,169 @@ async def download_video(url: str, db: Session):
             if video_id in download_progress:
                 del download_progress[video_id]
 
-@app.get("/")
-async def home(request: Request):
-    """工具库主页"""
-    return templates.TemplateResponse("index.html", {"request": request})
+# 定义工具配置
+TOOLS_CONFIG = {
+    'ai-image': {
+        'name': 'AI文生图',
+        'features': [
+            {
+                'title': '智能生成',
+                'desc': '通过文字描述智能生成高质量图像，支持多种风格和场景'
+            },
+            {
+                'title': '风格调整',
+                'desc': '提供丰富的风格预设和参数调整，实现个性化创作'
+            },
+            {
+                'title': '批量导出',
+                'desc': '支持批量生成和导出，满足批量创作需求'
+            }
+        ],
+        'progress': 35
+    },
+    'text-card': {
+        'name': '文字卡片生成',
+        'features': [
+            {
+                'title': '模板选择',
+                'desc': '提供多种精美模板，一键生成精美文字卡片'
+            },
+            {
+                'title': '自定义样式',
+                'desc': '支持自定义字体、颜色、布局等样式'
+            },
+            {
+                'title': '批量生成',
+                'desc': '支持批量生成多张卡片，提高效率'
+            }
+        ],
+        'progress': 20
+    },
+    'image-compress': {
+        'name': '图片压缩',
+        'features': [
+            {
+                'title': '智能压缩',
+                'desc': '自动分析图片特征，选择最佳压缩方案'
+            },
+            {
+                'title': '批量处理',
+                'desc': '支持多图片同时压缩，提高工作效率'
+            },
+            {
+                'title': '质量控制',
+                'desc': '可调节压缩质量，平衡大小和画质'
+            }
+        ],
+        'progress': 15
+    },
+    'resize': {
+        'name': '调整大小',
+        'features': [
+            {
+                'title': '精确调整',
+                'desc': '支持像素级精确调整图片尺寸'
+            },
+            {
+                'title': '等比缩放',
+                'desc': '智能保持图片比例，避免变形'
+            },
+            {
+                'title': '批量处理',
+                'desc': '一次性调整多张图片尺寸'
+            }
+        ],
+        'progress': 10
+    },
+    'convert': {
+        'name': '格式转换',
+        'features': [
+            {
+                'title': '多格式支持',
+                'desc': '支持常见图片格式间的相互转换'
+            },
+            {
+                'title': '参数调整',
+                'desc': '可设置转换参数，优化输出效果'
+            },
+            {
+                'title': '批量转换',
+                'desc': '支持批量转换不同格式图片'
+            }
+        ],
+        'progress': 25
+    },
+    'svg-editor': {
+        'name': 'SVG编辑器',
+        'features': [
+            {
+                'title': '可视化编辑',
+                'desc': '直观的界面操作，轻松编辑SVG'
+            },
+            {
+                'title': '代码同步',
+                'desc': '实时预览代码变化，支持手动编辑'
+            },
+            {
+                'title': '组件库',
+                'desc': '提供常用SVG组件，快速创建图形'
+            }
+        ],
+        'progress': 30
+    },
+    'svg-to-ppt': {
+        'name': 'SVG to PPT',
+        'features': [
+            {
+                'title': '一键转换',
+                'desc': '将SVG快速转换为PPT可编辑元素'
+            },
+            {
+                'title': '样式保持',
+                'desc': '完整保留SVG样式和动画效果'
+            },
+            {
+                'title': '批量导入',
+                'desc': '支持批量SVG导入PPT模板'
+            }
+        ],
+        'progress': 40
+    },
+    'logo-design': {
+        'name': '极简Logo设计',
+        'features': [
+            {
+                'title': '模板系统',
+                'desc': '提供专业Logo模板，快速设计'
+            },
+            {
+                'title': '个性定制',
+                'desc': '支持颜色、字体、布局等深度定制'
+            },
+            {
+                'title': '多格式导出',
+                'desc': '支持多种格式导出，满足不同需求'
+            }
+        ],
+        'progress': 20
+    }
+}
 
-@app.get("/youtube")
-async def youtube(request: Request, db: Session = Depends(get_db)):
-    """YouTube下载器页面"""
+# 首页路由
+@app.get("/", name="index")
+async def index(request: Request):
+    return templates.TemplateResponse(
+        "home/index.html",
+        {
+            "request": request,
+            "current_tool": "/",
+            "year": datetime.now().year
+        }
+    )
+
+# YouTube下载器路由
+@app.get("/tools/youtube", name="youtube")
+async def youtube_page(request: Request, db: Session = Depends(get_db)):
     logger.info("访问YouTube下载器")
     
     today = datetime.now()
@@ -291,13 +455,69 @@ async def youtube(request: Request, db: Session = Depends(get_db)):
     dates_for_js = {date: True for date in videos_by_date.keys()}
     
     return templates.TemplateResponse(
-        "youtube.html",
+        "tools/youtube/youtube_index.html",
         {
-            "request": request, 
+            "request": request,
+            "current_tool": "/tools/youtube",
             "videos_by_date": videos_by_date,
             "dates_for_js": json.dumps(dates_for_js),
-            "today": today.strftime('%Y-%m-%d')
+            "today": today.strftime('%Y-%m-%d'),
+            "year": datetime.now().year  # 添加年份变量用于页脚
         }
+    )
+
+# 工具页面路由
+@app.get("/tools/{tool_name}")
+async def tool_page(request: Request, tool_name: str):
+    if tool_name not in TOOLS_CONFIG:
+        return templates.TemplateResponse(
+            "common/404.html",
+            {
+                "request": request,
+                "current_tool": None
+            },
+            status_code=404
+        )
+    
+    tool_config = TOOLS_CONFIG[tool_name]
+    tool_path = f"/tools/{tool_name}"
+    
+    return templates.TemplateResponse(
+        "common/developing.html",
+        {
+            "request": request,
+            "current_tool": tool_path,
+            "tool_name": tool_config["name"],
+            "features": tool_config["features"],
+            "progress": tool_config["progress"]
+        }
+    )
+
+# AI文生图路由
+@app.get("/tools/ai-image", name="ai_image")
+async def ai_image(request: Request):
+    tool_config = TOOLS_CONFIG['ai-image']
+    return templates.TemplateResponse(
+        "common/developing.html",
+        {
+            "request": request,
+            "current_tool": "/tools/ai-image",
+            "tool_name": tool_config["name"],
+            "features": tool_config["features"],
+            "progress": tool_config["progress"]
+        }
+    )
+
+# 404错误处理
+@app.exception_handler(404)
+async def not_found(request: Request, exc):
+    return templates.TemplateResponse(
+        "common/404.html",
+        {
+            "request": request,
+            "current_tool": None
+        },
+        status_code=404
     )
 
 @app.post("/download")
@@ -478,11 +698,33 @@ async def developing(request: Request):
 # 注册batch_downloader的路由器
 app.include_router(batch_router)
 
+# 工具路由生成器
+def create_tool_route(tool_id: str):
+    async def route_handler(request: Request):
+        tool_config = TOOLS_CONFIG[tool_id]
+        return templates.TemplateResponse(
+            "common/developing.html",
+            {
+                "request": request,
+                "current_tool": f"/tools/{tool_id}",
+                "tool_name": tool_config["name"],
+                "features": tool_config["features"],
+                "progress": tool_config["progress"],
+                "year": datetime.now().year
+            }
+        )
+    return route_handler
+
+# 注册所有工具路由
+for tool_id in TOOLS_CONFIG.keys():
+    if tool_id != 'youtube':  # 跳过YouTube下载器，因为它有专门的路由处理
+        app.add_route(f"/tools/{tool_id}", create_tool_route(tool_id), methods=["GET"], name=tool_id)
+
 if __name__ == "__main__":
     # 设置调试配置
     uvicorn.run(
         "main:app",
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=8000,
         reload=True,  # 启用热重载
         log_level="debug",  # 设置日志级别

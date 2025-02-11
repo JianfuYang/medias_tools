@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媒体效率工具库</title>
+    <!-- 添加网站图标 -->
+    <link rel="icon" type="image/svg+xml" href="/static/images/logo.svg">
+    <link rel="alternate icon" type="image/png" href="/static/images/favicon.png">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="flex min-h-screen">
+        <!-- 引入左侧导航栏 -->
+        {% include 'navigation/sidebar.html' %}
+
+        <!-- 右侧内容区域 -->
+        <div class="flex-1 flex flex-col">
+            <!-- 引入页眉 -->
+            {% include 'common/header.html' %}
+
+            <!-- 主要内容区域 -->
+            <div class="flex-1 flex flex-col overflow-x-hidden">
+                <main class="flex-grow w-full">
+                    <div class="container mx-auto px-4 py-6">
+                        <!-- Hero Section -->
+                        <div class="py-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-md mb-8">
+                            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                                <h1 class="text-3xl font-bold text-white mb-3">
+                                    效率工具库 - 您的图文音视频助手
+                                </h1>
+                                <p class="text-lg text-blue-100 mb-6">
+                                    简单、高效、专业的在线工具集合，让创作更轻松
+                                </p>
+                                <div class="flex flex-wrap justify-center gap-4">
+                                    <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                                        <div class="text-2xl font-bold text-white mb-1">10+</div>
+                                        <div class="text-sm text-blue-100">专业工具</div>
+                                    </div>
+                                    <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                                        <div class="text-2xl font-bold text-white mb-1">100%</div>
+                                        <div class="text-sm text-blue-100">免费使用</div>
+                                    </div>
+                                    <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3">
+                                        <div class="text-2xl font-bold text-white mb-1">24h</div>
+                                        <div class="text-sm text-blue-100">在线服务</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 工具分类标题 -->
+                        <div class="mb-6">
+                            <h2 class="text-xl font-bold text-gray-900">
+                                全部工具
+                            </h2>
+                            <p class="mt-1 text-sm text-gray-600">
+                                选择您需要的工具，开始提升工作效率
+                            </p>
+                        </div>
+
+                        <!-- 工具卡片网格 -->
+                        {% include 'home/tools_grid.html' %}
+                    </div>
+                </main>
+
+                <!-- 引入页脚 -->
+                <footer class="mt-auto">
+                    {% include 'common/footer.html' %}
+                </footer>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

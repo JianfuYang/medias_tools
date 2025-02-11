@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>媒体效率工具库</title>
+    <title>{% block title %}媒体效率工具库{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="/static/css/style.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50">
-    <div class="flex h-screen">
-        <!-- 引入左侧导航栏 -->
-        {% include 'components/sidebar.html' %}
+    <div class="flex min-h-screen">
+        <!-- 左侧导航栏 -->
+        {% include 'navigation/sidebar.html' %}
 
         <!-- 右侧内容区域 -->
         <div class="flex-1 overflow-auto">
             <main class="p-8">
-                <!-- 引入工具卡片网格 -->
-                {% include 'components/tools_grid.html' %}
+                {% block content %}{% endblock %}
             </main>
         </div>
     </div>
 </body>
-</html>
+</html> 
