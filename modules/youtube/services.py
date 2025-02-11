@@ -1,44 +1,161 @@
 import yt_dlp
-from .models import Video, BatchVideo
 import os
 import logging
+import subprocess
 from datetime import datetime
 from sqlalchemy.orm import Session
 from config.settings import VIDEOS_DIR, BATCH_VIDEOS_DIR
+from .models import Video, BatchVideo
 
 logger = logging.getLogger(__name__)
 
-# 下载配置
-ydl_opts = {
-    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+# 存储下载进度
+download_progress = {}
+
+# yt-dlp基础配置
+YDL_OPTS = {
+    'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+    'merge_output_format': 'mp4',
     'writethumbnail': True,
     'writeinfojson': True,
-    'quiet': True,
-    'no_warnings': True,
-    'extract_flat': False,
+    'quiet': False,
+    'no_warnings': False,
+    'ignoreerrors': True,
+    'retries': 10,
+    'fragment_retries': 10,
+    'skip_unavailable_fragments': True,
+    'force_generic_extractor': False,
+    'sleep_interval': 3,
+    'max_sleep_interval': 6,
+    'http_headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-us,en;q=0.5',
+        'Sec-Fetch-Mode': 'navigate',
+    },
+    'nocheckcertificate': True,
+    'keepvideo': True,
+    'postprocessors': [
+        {
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        },
+        {
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'm4a',
+            'preferredquality': '192',
+        }
+    ],
 }
 
-def download_video(url: str, db: Session):
-    """下载单个视频"""
+def progress_hook(d):
+    """下载进度回调"""
     try:
+        if d['status'] == 'downloading':
+            video_id = d.get('info_dict', {}).get('id', 'unknown')
+            downloaded = d.get('downloaded_bytes', 0)
+            total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
+            
+            if total > 0:
+                percentage = (downloaded / total) * 100
+                download_progress[video_id] = round(percentage, 1)
+                logger.debug(f"下载进度 - video_id: {video_id}, progress: {percentage}%")
+        elif d['status'] == 'finished':
+            video_id = d.get('info_dict', {}).get('id', 'unknown')
+            download_progress[video_id] = 100
+            logger.info(f"视频 {video_id} 下载完成")
+        elif d['status'] == 'error':
+            logger.error(f"下载出错: {d.get('error')}")
+    except Exception as e:
+        logger.error(f"进度处理错误: {str(e)}")
+
+def check_ffmpeg():
+    """检查ffmpeg是否安装"""
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        return True
+    except Exception:
+        logger.warning("ffmpeg未安装，某些功能可能受限")
+        return False
+
+def get_date_folder():
+    """获取当前日期的文件夹路径"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    folder_path = os.path.join(VIDEOS_DIR, today)
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path
+
+def get_media_paths(video_id: str, date_folder: str):
+    """获取媒体文件路径"""
+    return {
+        'video': f"{date_folder}/{video_id}.mp4",
+        'audio': f"{date_folder}/{video_id}.m4a",
+        'thumbnail': f"{date_folder}/thumbnails/{video_id}.jpg",
+        'info': f"{date_folder}/{video_id}.info.json"
+    }
+
+def extract_thumbnail(video_path: str, output_path: str) -> bool:
+    """从视频中提取缩略图"""
+    try:
+        subprocess.run([
+            'ffmpeg',
+            '-i', video_path,
+            '-ss', '00:00:01',  # 从1秒处开始
+            '-vframes', '1',    # 只提取1帧
+            '-vf', 'scale=640:-1',  # 设置宽度为640，高度自适应
+            '-y',
+            output_path
+        ], check=True, capture_output=True)
+        return True
+    except Exception as e:
+        logger.error(f"提取缩略图失败: {str(e)}")
+        return False
+
+def convert_thumbnail(input_path: str, output_path: str) -> bool:
+    """转换缩略图格式"""
+    try:
+        subprocess.run([
+            'ffmpeg',
+            '-i', input_path,
+            '-vf', 'scale=640:-1',  # 统一缩略图尺寸
+            '-y',
+            output_path
+        ], check=True, capture_output=True)
+        return True
+    except Exception as e:
+        logger.error(f"转换缩略图失败: {str(e)}")
+        return False
+
+async def download_video(url: str, db: Session):
+    """后台下载视频"""
+    try:
+        logger.info(f"开始下载视频: {url}")
+        
+        # 创建日期文件夹
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        save_dir = os.path.join(VIDEOS_DIR, date_str)  # VIDEOS_DIR 是 toolsfile/youtube/videos
+        os.makedirs(os.path.join(save_dir, "thumbnails"), exist_ok=True)
+        
+        # 复制基础配置并添加特定配置
+        ydl_opts = YDL_OPTS.copy()
+        ydl_opts.update({
+            'outtmpl': os.path.join(save_dir, '%(id)s.%(ext)s'),
+            'progress_hooks': [progress_hook],
+            'outtmpl_thumbnail': os.path.join(save_dir, 'thumbnails', '%(id)s.%(ext)s'),
+        })
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # 获取视频信息
             info = ydl.extract_info(url, download=False)
             video_id = info['id']
             
-            # 构建保存路径
-            date_str = datetime.now().strftime('%Y-%m-%d')
-            save_dir = os.path.join(VIDEOS_DIR, date_str)
-            os.makedirs(save_dir, exist_ok=True)
-            
-            # 设置下载选项
-            ydl_opts.update({
-                'outtmpl': os.path.join(save_dir, f'{video_id}.%(ext)s'),
-                'progress_hooks': [lambda d: download_progress_hook(d, db)],
-            })
-            
             # 下载视频
             ydl.download([url])
+            
+            # 构建数据库存储的路径（相对于VIDEOS_DIR的路径）
+            relative_path = os.path.join(date_str, f'{video_id}.mp4')
+            relative_audio_path = os.path.join(date_str, f'{video_id}.m4a')
+            relative_thumbnail_path = os.path.join(date_str, 'thumbnails', f'{video_id}.jpg')
             
             # 更新数据库
             video = Video(
@@ -47,9 +164,9 @@ def download_video(url: str, db: Session):
                 duration=info.get('duration', 0),
                 description=info.get('description', '无描述'),
                 youtube_url=url,
-                file_path=os.path.join(save_dir, f'{video_id}.mp4'),
-                audio_path=os.path.join(save_dir, f'{video_id}.m4a'),
-                thumbnail_path=os.path.join(save_dir, f'{video_id}.jpg'),
+                file_path=os.path.join(VIDEOS_DIR, relative_path),  # 添加前缀路径
+                audio_path=os.path.join(VIDEOS_DIR, relative_audio_path),  # 添加前缀路径
+                thumbnail_path=os.path.join(VIDEOS_DIR, relative_thumbnail_path),  # 添加前缀路径
                 file_size=os.path.getsize(os.path.join(save_dir, f'{video_id}.mp4')) / (1024 * 1024)  # MB
             )
             db.add(video)
@@ -68,7 +185,7 @@ def batch_download(urls: list, db: Session):
         
         for url in urls:
             try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
                     # 获取视频信息
                     info = ydl.extract_info(url, download=False)
                     video_id = info['id']
@@ -97,7 +214,7 @@ def batch_download(urls: list, db: Session):
                     db.commit()
                     
                     # 设置下载选项
-                    ydl_opts.update({
+                    YDL_OPTS.update({
                         'outtmpl': os.path.join(save_dir, f'{video_id}.%(ext)s'),
                         'progress_hooks': [lambda d: batch_progress_hook(d, video.id, db)],
                     })
@@ -162,4 +279,15 @@ def batch_progress_hook(d, video_id, db):
             db.commit()
             
     except Exception as e:
-        logger.error(f"更新进度失败: {str(e)}") 
+        logger.error(f"更新进度失败: {str(e)}")
+
+def get_progress(video_id: str):
+    """获取下载进度"""
+    if video_id in download_progress:
+        # 存在则说明还没下载完成或失败
+        progress = download_progress.get(video_id, 0)
+    else:
+        # 不存在则说明下载完成
+        progress = 100
+    logger.info(f"进度查询 - 视频ID: {video_id}, 进度: {progress}%")
+    return {"progress": progress} 

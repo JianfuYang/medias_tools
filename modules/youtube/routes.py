@@ -4,11 +4,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from .models import Video, BatchVideo
-from .services import download_video, batch_download, get_batch_progress
+from .services import download_video, batch_download, get_batch_progress, get_progress
 from core.database import get_db, get_batch_db
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -17,11 +18,38 @@ logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 
 @router.get("/")
-async def youtube_index(request: Request):
+async def youtube_index(request: Request, db: Session = Depends(get_db)):
     """YouTube下载器首页"""
+    logger.info("访问YouTube下载器")
+    
+    today = datetime.now()
+    dates = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+    
+    videos = db.query(Video).all()
+    
+    videos_by_date = {}
+    for date in dates:
+        videos_by_date[date] = []
+    
+    for video in videos:
+        logger.info(f"视频文件路径: {video.file_path}")
+        video_date = '/'.join(video.file_path.split('/')[3:4])
+        if video_date in dates:
+            videos_by_date[video_date].append(video)
+    
+    videos_by_date = {k: v for k, v in videos_by_date.items() if v}
+    dates_for_js = {date: True for date in videos_by_date.keys()}
+    
     return templates.TemplateResponse(
         "tools/youtube/youtube_index.html",
-        {"request": request, "year": datetime.now().year}
+        {
+            "request": request,
+            "current_tool": "/tools/youtube",
+            "videos_by_date": videos_by_date,
+            "dates_for_js": json.dumps(dates_for_js),
+            "today": today.strftime('%Y-%m-%d'),
+            "year": datetime.now().year
+        }
     )
 
 @router.get("/batch")
@@ -115,20 +143,23 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/download")
-async def download_single(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """单个视频下载"""
+async def start_download(url: str = Form(...), background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)):
+    """开始下载视频"""
     try:
-        form = await request.form()
-        url = form.get("url")
-        if not url:
-            raise HTTPException(status_code=400, detail="URL不能为空")
-            
+        logger.info(f"收到下载请求: {url}")
         background_tasks.add_task(download_video, url, db)
-        return JSONResponse({"message": "下载任务已启动"})
-        
+        return {"message": "开始下载"}
     except Exception as e:
-        logger.error(f"下载失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"下载请求失败: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={"message": f"下载失败: {str(e)}"}
+        )
+
+@router.get("/progress/{video_id}")
+async def get_download_progress(video_id: str):
+    """获取下载进度"""
+    return get_progress(video_id)
 
 @router.get("/history")
 async def history_page(request: Request, db: Session = Depends(get_db)):
