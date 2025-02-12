@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-from modules.youtube.routes import router as youtube_router
+from modules.youtube import router as youtube_router
 from modules.youtube.services import check_ffmpeg
 from config.settings import VIDEOS_DIR, BATCH_VIDEOS_DIR, STATIC_DIR
 from config.tools import TOOLS_CONFIG
@@ -10,12 +10,13 @@ import logging
 from datetime import datetime
 import os
 import uvicorn
-from modules.chatgpt.routes import router as chatgpt_router
+from modules.chatgpt import router as chatgpt_router
 from core.database import init_db
 from PIL import Image
 import io
 import base64
 from modules.image_compress.routes import router as image_compress_router
+from modules.image_resize.routes import router as image_resize_router
 
 # 配置日志
 logging.basicConfig(
@@ -71,6 +72,13 @@ app.include_router(
     tags=["image_compress"]
 )
 
+# 注册图片调整大小模块路由
+app.include_router(
+    image_resize_router,
+    prefix="/tools/image-resize",
+    tags=["resize"]
+)
+
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
 async def tool_page(request: Request, tool_id: str):
@@ -83,8 +91,8 @@ async def tool_page(request: Request, tool_id: str):
             status_code=404
         )
     
-    # 如果是YouTube下载器或ChatGPT助手，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt']:
+    # 如果是已完成的工具，重定向到专门的路由
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面

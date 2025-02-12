@@ -4,6 +4,24 @@ TOOLS_CONFIG = {
         'features': ['视频下载', '批量下载', '下载历史'],
         'progress': 100
     },
+    'image-resize': {
+        'name': '图片调整大小',
+        'features': [
+            {
+                'title': '本地处理',
+                'desc': '浏览器中直接处理，无需上传'
+            },
+            {
+                'title': '实时预览',
+                'desc': '即时查看调整效果'
+            },
+            {
+                'title': '保持比例',
+                'desc': '智能锁定宽高比例'
+            }
+        ],
+        'progress': 100
+    },
     'chatgpt': {
         'name': 'ChatGPT助手',
         'features': [
@@ -76,23 +94,23 @@ TOOLS_CONFIG = {
         ],
         'progress': 15
     },
-    'resize': {
+    'image-resize': {
         'name': '调整大小',
         'features': [
             {
-                'title': '精确调整',
-                'desc': '支持像素级精确调整图片尺寸'
+                'title': '本地处理',
+                'desc': '浏览器中直接处理，无需上传'
             },
             {
-                'title': '等比缩放',
-                'desc': '智能保持图片比例，避免变形'
+                'title': '实时预览',
+                'desc': '即时查看调整效果'
             },
             {
-                'title': '批量处理',
-                'desc': '一次性调整多张图片尺寸'
+                'title': '保持比例',
+                'desc': '智能锁定宽高比例'
             }
         ],
-        'progress': 10
+        'progress': 100
     },
     'convert': {
         'name': '格式转换',

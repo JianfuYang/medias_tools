@@ -12,13 +12,13 @@ templates = Jinja2Templates(directory="templates")
 
 # 图片压缩页面路由
 @router.get("/")
-async def image_compress_page(request: Request):
-    logger.info("访问图片压缩页面")
+async def compress_page(request: Request):
+    """图片压缩页面"""
     return templates.TemplateResponse(
         "tools/image-compress/compress.html",
         {
             "request": request,
-            "current_tool": "/tools/image-compress/compress",
+            "current_tool": "/tools/image-compress",
             "year": datetime.now().year
         }
     )
