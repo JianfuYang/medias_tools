@@ -4,6 +4,24 @@ TOOLS_CONFIG = {
         'features': ['视频下载', '批量下载', '下载历史'],
         'progress': 100
     },
+    'chatgpt': {
+        'name': 'ChatGPT助手',
+        'features': [
+            {
+                'title': '智能对话',
+                'desc': '支持与AI助手进行自然语言对话'
+            },
+            {
+                'title': '上下文记忆',
+                'desc': '保持对话连贯性,支持多轮对话'
+            },
+            {
+                'title': '对话导出',
+                'desc': '支持导出对话历史为多种格式'
+            }
+        ],
+        'progress': 100
+    },
     'ai-image': {
         'name': 'AI文生图',
         'features': [

@@ -57,7 +57,7 @@ def passthrough_module(parent, child, allowed_attributes=(..., ), *, callback=la
         callback(attr)
         return ret
 
-    @functools.cache
+    @functools.lru_cache(maxsize=None)
     def from_child(attr):
         nonlocal child
         if attr not in allowed_attributes:

@@ -19,6 +19,18 @@ BatchSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=batch_e
 
 Base = declarative_base()
 
+# 初始化数据库表
+def init_db():
+    """初始化所有数据库表"""
+    from modules.chatgpt.models import ChatSession, ChatMessage
+    from modules.youtube.models import Video, BatchVideo
+    
+    # 创建主数据库表
+    Base.metadata.create_all(bind=engine)
+    
+    # 创建批量下载数据库表
+    Base.metadata.create_all(bind=batch_engine)
+
 def get_db():
     db = SessionLocal()
     try:

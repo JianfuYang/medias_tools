@@ -1,0 +1,670 @@
+{% extends "common/base.html" %}
+
+{% block title %}ChatGPT助手 - 媒体效率工具库{% endblock %}
+
+{% block content %}
+<div class="flex h-[calc(100vh-4rem)]">
+    <!-- 左侧会话列表 -->
+    <div class="flex-shrink-0 w-[260px] bg-white h-full flex flex-col border-r border-gray-200">
+        <!-- 新建会话按钮和批量操作 -->
+        <div class="p-4 space-y-2 border-b border-gray-200">
+            <!-- 新建会话按钮 -->
+            <button id="newChatBtn" class="w-full flex items-center gap-3 px-3 py-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors duration-200 text-sm">
+                <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                </svg>
+                新建对话
+            </button>
+            
+            <!-- 批量操作按钮 -->
+            <div class="flex gap-2">
+                <button id="selectAllBtn" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors duration-200 text-sm">
+                    <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    全选
+                </button>
+                <button id="batchDeleteBtn" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-red-200 bg-white hover:bg-red-50 text-red-600 transition-colors duration-200 text-sm" style="display: none;">
+                    <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    删除选中
+                </button>
+            </div>
+        </div>
+
+        <!-- 会话列表 -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="mb-4 px-3">
+                <div class="text-xs text-gray-500 font-medium mb-2">今天</div>
+                <div id="todaySessions" class="space-y-1">
+                    {% for session in recent_sessions %}
+                    <div data-session-id="{{ session.id }}" 
+                        class="session-item group flex py-2 px-3 items-center gap-3 relative rounded-md hover:bg-gray-100 cursor-pointer text-gray-700 text-sm">
+                        <!-- 复选框 -->
+                        <div class="checkbox-wrapper opacity-0 group-hover:opacity-100 transition-opacity">
+                            <input type="checkbox" class="session-checkbox w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                onclick="event.stopPropagation()">
+                        </div>
+                        <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="h-4 w-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                        </svg>
+                        <div class="flex-1 text-ellipsis max-h-5 overflow-hidden break-all relative">
+                            {{ session.title }}
+                        </div>
+                        <!-- 删除按钮 -->
+                        <button class="delete-session opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded-md transition-opacity"
+                            onclick="deleteSession(event, '{{session.id}}')">
+                            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="h-4 w-4 text-gray-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="px-3">
+                <div class="text-xs text-gray-500 font-medium mb-2">前 7 天</div>
+                <div id="previousSessions" class="space-y-1">
+                    <!-- 历史会话将通过JS动态添加 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧聊天区域 -->
+    <div class="flex-1 flex flex-col bg-white relative h-full">
+        <!-- 聊天历史 -->
+        <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- 消息内容将动态添加 -->
+            <div class="text-base gap-4">
+                <!-- 系统消息 -->
+                <div class="group w-full text-gray-800 border-b border-black/10 dark:border-gray-900/50">
+                    <div class="flex p-4 gap-4 text-base md:gap-6 md:max-w-2xl lg:max-w-[38rem] xl:max-w-3xl md:py-6 lg:px-0 m-auto">
+                        <div class="flex-shrink-0 w-8 h-8">
+                            <div class="flex items-center justify-center w-8 h-8 bg-green-100 rounded-sm text-green-600">🤖</div>
+                        </div>
+                        <div class="relative flex w-[calc(100%-50px)] flex-col gap-1">
+                            <div class="min-h-[20px] whitespace-pre-wrap break-words">
+                                您好！我已经收到了您的测试消息。如果您有任何问题或需要帮助，请随时告诉我。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户消息 -->
+                <div class="group w-full text-gray-800 border-b border-black/10 bg-gray-50">
+                    <div class="flex p-4 gap-4 text-base md:gap-6 md:max-w-2xl lg:max-w-[38rem] xl:max-w-3xl md:py-6 lg:px-0 m-auto">
+                        <div class="flex-shrink-0 w-8 h-8">
+                            <div class="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-sm text-blue-600">👤</div>
+                        </div>
+                        <div class="relative flex w-[calc(100%-50px)] flex-col gap-1">
+                            <div class="min-h-[20px] whitespace-pre-wrap break-words">
+                                测试
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 - 固定在底部 -->
+        <div class="border-t border-gray-200 bg-white p-4">
+            <div class="mx-auto max-w-3xl">
+                <div class="relative flex flex-col w-full bg-white border border-black/10 rounded-xl shadow-[0_0_10px_rgba(0,0,0,0.10)]">
+                    <!-- 工具栏 -->
+                    <div class="flex items-center gap-2 px-4 py-2 border-b border-black/10">
+                        <button class="p-1 rounded-md text-gray-500 hover:bg-gray-100">
+                            <svg stroke="currentColor" fill="none" class="w-4 h-4" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path>
+                            </svg>
+                        </button>
+                        <button class="p-1 rounded-md text-gray-500 hover:bg-gray-100">
+                            <svg stroke="currentColor" fill="none" class="w-4 h-4" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- 输入框区域 -->
+                    <div class="relative flex items-center">
+                        <textarea id="messageInput"
+                            class="w-full resize-none border-0 bg-transparent py-3 px-4 pr-12 focus:ring-0 focus-visible:ring-0 max-h-[200px] overflow-y-auto"
+                            style="min-height: 44px;"
+                            placeholder="给 ChatGPT 发送消息"
+                            rows="1"></textarea>
+                        <button id="sendButton" 
+                            class="absolute right-2 p-1 rounded-md text-gray-500 hover:bg-gray-100 enabled:hover:text-gray-900 disabled:hover:bg-transparent">
+                            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="h-4 w-4">
+                                <path d="M.5 1.163A1 1 0 0 1 1.97.28l12.868 6.837a1 1 0 0 1 0 1.766L1.969 15.72A1 1 0 0 1 .5 14.836V10.33a1 1 0 0 1 .816-.983L8.5 8 1.316 6.653A1 1 0 0 1 .5 5.67V1.163Z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-center mt-2 text-xs text-gray-600">
+                    ChatGPT 可能会产生错误信息。请验证重要信息。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 全局变量声明
+let ws = null;
+let currentSessionId = null;
+let marked = null; // marked库的引用
+
+// 工具函数
+function autoResize(textarea) {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(Math.max(44, textarea.scrollHeight), 200);
+    textarea.style.height = newHeight + 'px';
+    textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
+}
+
+function handleKeyPress(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+}
+
+// WebSocket相关函数
+function connectWebSocket(sessionId) {
+    if (!sessionId) return;
+    currentSessionId = sessionId;
+}
+
+// 消息处理函数
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    if (!input || !currentSessionId) return;
+    
+    const message = input.value.trim();
+    if (!message) return;
+    
+    try {
+        // 添加用户消息到界面
+        appendMessage('user', message);
+        
+        // 保存用户消息到数据库
+        await fetch(`/tools/chatgpt/sessions/${currentSessionId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                role: 'user',
+                content: message
+            })
+        });
+        
+        // 清空输入框
+        input.value = '';
+        autoResize(input);
+        
+        // 模拟GPT回复
+        const aiResponse = 'GPT正在接入中，请等待开通。\n\n您刚才说: ' + message;
+        
+        // 延迟1秒后显示AI回复
+        setTimeout(async () => {
+            appendMessage('assistant', aiResponse);
+            
+            // 保存AI回复到数据库
+            await fetch(`/tools/chatgpt/sessions/${currentSessionId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'assistant',
+                    content: aiResponse
+                })
+            });
+        }, 1000);
+        
+    } catch (error) {
+        console.error('发送消息失败:', error);
+        alert('发送失败，请重试');
+    }
+}
+
+// 修改appendMessage函数
+function appendMessage(role, content) {
+    if (!marked) return;
+    
+    const chatHistory = document.getElementById('chatHistory');
+    if (!chatHistory) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `group w-full text-gray-800 ${role === 'user' ? 'bg-gray-50' : ''}`;
+    
+    const innerDiv = document.createElement('div');
+    innerDiv.className = 'flex p-3 gap-3 text-base md:gap-4 md:max-w-2xl lg:max-w-[38rem] xl:max-w-3xl m-auto';
+    
+    // 用户消息靠右显示
+    if (role === 'user') {
+        innerDiv.className += ' justify-end';
+    }
+    
+    // 消息内容
+    const contentDiv = document.createElement('div');
+    contentDiv.className = `min-h-[20px] whitespace-pre-wrap break-words markdown-body rounded-lg px-3 py-2 ${
+        role === 'user' 
+            ? 'bg-blue-500 text-white max-w-[80%]' 
+            : 'bg-gray-100 text-gray-800 max-w-[80%]'
+    }`;
+    contentDiv.innerHTML = marked.parse(content);
+    
+    // 头像
+    const avatarContainer = document.createElement('div');
+    avatarContainer.className = 'flex-shrink-0 w-8 h-8';
+    
+    const avatar = document.createElement('div');
+    avatar.className = `flex items-center justify-center w-8 h-8 rounded-full ${
+        role === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+    }`;
+    avatar.innerHTML = role === 'user' ? '👤' : '🤖';
+    
+    avatarContainer.appendChild(avatar);
+    
+    // 根据角色调整内容和头像的顺序
+    if (role === 'user') {
+        innerDiv.appendChild(contentDiv);
+        innerDiv.appendChild(avatarContainer);
+    } else {
+        innerDiv.appendChild(avatarContainer);
+        innerDiv.appendChild(contentDiv);
+    }
+    
+    messageDiv.appendChild(innerDiv);
+    chatHistory.appendChild(messageDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// 会话管理函数
+async function createNewSession() {
+    try {
+        const response = await fetch('/tools/chatgpt/sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('创建会话失败');
+        }
+        
+        const data = await response.json();
+        
+        // 清空当前会话
+        currentSessionId = data.session_id;
+        
+        // 清空聊天历史
+        const chatHistory = document.getElementById('chatHistory');
+        if (chatHistory) {
+            chatHistory.innerHTML = '';
+            appendMessage('assistant', '你好！我是AI助手。目前GPT正在接入中，请等待开通。');
+            
+            // 保存欢迎消息
+            await fetch(`/tools/chatgpt/sessions/${currentSessionId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    role: 'assistant',
+                    content: '你好！我是AI助手。目前GPT正在接入中，请等待开通。'
+                })
+            });
+        }
+        
+        // 更新会话列表
+        await updateSessionsList();
+        
+    } catch (error) {
+        console.error('创建会话失败:', error);
+        throw error;
+    }
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', async function() {
+    // 加载marked库
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+    script.onload = function() {
+        marked = window.marked;
+        initializeChat();
+    };
+    document.head.appendChild(script);
+    
+    // 初始化事件监听
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('keypress', handleKeyPress);
+        messageInput.addEventListener('input', function() {
+            autoResize(this);
+        });
+    }
+    
+    // 初始化批量操作
+    initBatchOperations();
+    
+    // 绑定新建会话按钮事件
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', async () => {
+            try {
+                await createNewSession();
+            } catch (error) {
+                console.error('创建新会话失败:', error);
+                alert('创建新会话失败，请重试');
+            }
+        });
+    }
+});
+
+// 初始化聊天
+async function initializeChat() {
+    try {
+        // 获取会话列表
+        const response = await fetch('/tools/chatgpt/sessions');
+        const sessions = await response.json();
+        
+        if (sessions && sessions.length > 0) {
+            // 加载最近的会话
+            const lastSession = sessions[0];
+            await loadSession(lastSession.id);
+        } else {
+            // 如果没有历史会话，显示空状态
+            showEmptyState();
+        }
+    } catch (error) {
+        console.error('初始化聊天失败:', error);
+        showEmptyState();
+    }
+}
+
+// 显示空状态
+function showEmptyState() {
+    const chatHistory = document.getElementById('chatHistory');
+    if (chatHistory) {
+        chatHistory.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                    </path>
+                </svg>
+                <p class="text-lg font-medium mb-2">还没有会话</p>
+                <p class="text-sm mb-4">点击"新建对话"开始与AI助手交谈</p>
+                <button onclick="createNewSession()" 
+                    class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    新建对话
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 修改loadSession函数
+async function loadSession(sessionId) {
+    try {
+        currentSessionId = sessionId;
+        const chatHistory = document.getElementById('chatHistory');
+        if (!chatHistory) return;
+        
+        chatHistory.innerHTML = '';
+        
+        const response = await fetch(`/tools/chatgpt/sessions/${sessionId}/messages`);
+        if (response.ok) {
+            const messages = await response.json();
+            if (messages.length === 0) {
+                // 如果是新会话，显示欢迎消息
+                appendMessage('assistant', '你好！我是AI助手。目前GPT正在接入中，请等待开通。');
+            } else {
+                // 显示历史消息
+                messages.forEach(msg => {
+                    appendMessage(msg.role, msg.content);
+                });
+            }
+        }
+        
+        // 高亮当前选中的会话
+        document.querySelectorAll('.session-item').forEach(item => {
+            if (item.dataset.sessionId === sessionId.toString()) {
+                item.classList.add('bg-gray-100');
+                // 点击会话项时加载该会话
+                item.onclick = () => loadSession(sessionId);
+            } else {
+                item.classList.remove('bg-gray-100');
+            }
+        });
+        
+    } catch (error) {
+        console.error('加载会话失败:', error);
+        alert('加载会话失败，请重试');
+    }
+}
+
+// 批量操作相关函数
+function initBatchOperations() {
+    // 全选按钮点击事件
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+    
+    // 移除旧的事件监听器
+    if (selectAllBtn) {
+        const newSelectAllBtn = selectAllBtn.cloneNode(true);
+        selectAllBtn.parentNode.replaceChild(newSelectAllBtn, selectAllBtn);
+        newSelectAllBtn.addEventListener('click', toggleSelectAll);
+    }
+    
+    if (batchDeleteBtn) {
+        const newBatchDeleteBtn = batchDeleteBtn.cloneNode(true);
+        batchDeleteBtn.parentNode.replaceChild(newBatchDeleteBtn, batchDeleteBtn);
+        newBatchDeleteBtn.addEventListener('click', batchDeleteSessions);
+    }
+    
+    // 为所有复选框添加change事件
+    document.querySelectorAll('.session-checkbox').forEach(checkbox => {
+        const newCheckbox = checkbox.cloneNode(true);
+        checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+        newCheckbox.addEventListener('change', updateBatchDeleteButton);
+    });
+    
+    // 初始化时更新删除按钮状态
+    updateBatchDeleteButton();
+}
+
+// 全选/取消全选
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    const isAllChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !isAllChecked;
+    });
+    
+    updateBatchDeleteButton();
+}
+
+// 更新批量删除按钮状态
+function updateBatchDeleteButton() {
+    const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+    const checkedBoxes = document.querySelectorAll('.session-checkbox:checked');
+    
+    if (batchDeleteBtn) {
+        if (checkedBoxes.length > 0) {
+            batchDeleteBtn.style.display = 'flex';
+            batchDeleteBtn.innerHTML = `
+                <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                删除选中(${checkedBoxes.length})
+            `;
+        } else {
+            batchDeleteBtn.style.display = 'none';
+        }
+    }
+}
+
+// 修改删除会话函数
+async function deleteSession(event, sessionId) {
+    event.stopPropagation(); // 阻止事件冒泡
+    
+    if (!confirm('确定要删除这个会话吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/tools/chatgpt/sessions/${sessionId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('删除会话失败');
+        }
+        
+        // 如果删除的是当前会话,显示空状态
+        if (sessionId === currentSessionId) {
+            currentSessionId = null;
+            showEmptyState();
+        }
+        
+        // 更新会话列表
+        await updateSessionsList();
+        
+    } catch (error) {
+        console.error('删除会话失败:', error);
+        alert('删除会话失败，请重试');
+    }
+}
+
+// 修改批量删除函数
+async function batchDeleteSessions() {
+    const checkedBoxes = document.querySelectorAll('.session-checkbox:checked');
+    if (!checkedBoxes.length) return;
+    
+    if (!confirm(`确定要删除选中的 ${checkedBoxes.length} 个会话吗？`)) {
+        return;
+    }
+    
+    try {
+        const deletePromises = Array.from(checkedBoxes).map(async (checkbox) => {
+            const sessionItem = checkbox.closest('.session-item');
+            if (!sessionItem) return;
+            
+            const sessionId = parseInt(sessionItem.dataset.sessionId);
+            if (!sessionId) return;
+            
+            const response = await fetch(`/tools/chatgpt/sessions/${sessionId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`删除会话 ${sessionId} 失败`);
+            }
+            
+            // 如果删除的是当前会话,返回true
+            if (sessionId === currentSessionId) {
+                return true;
+            }
+        });
+        
+        const results = await Promise.all(deletePromises);
+        
+        // 如果删除了当前会话,显示空状态
+        if (results.includes(true)) {
+            currentSessionId = null;
+            showEmptyState();
+        }
+        
+        // 更新会话列表
+        await updateSessionsList();
+        
+    } catch (error) {
+        console.error('批量删除会话失败:', error);
+        alert('批量删除失败，请重试');
+    }
+}
+
+// 修改更新会话列表函数
+async function updateSessionsList() {
+    try {
+        const response = await fetch('/tools/chatgpt/sessions');
+        if (response.ok) {
+            const sessions = await response.json();
+            const todaySessions = document.getElementById('todaySessions');
+            if (todaySessions) {
+                if (sessions.length === 0) {
+                    // 如果没有会话,显示空提示
+                    todaySessions.innerHTML = `
+                        <div class="text-center py-4 text-gray-500">
+                            暂无会话记录
+                        </div>
+                    `;
+                } else {
+                    todaySessions.innerHTML = sessions.map(session => `
+                        <div data-session-id="${session.id}" 
+                            class="session-item group flex py-2 px-3 items-center gap-3 relative rounded-md hover:bg-gray-100 cursor-pointer text-gray-700 text-sm ${
+                                session.id === currentSessionId ? 'bg-gray-100' : ''
+                            }"
+                            onclick="loadSession(${session.id})">
+                            <div class="checkbox-wrapper opacity-0 group-hover:opacity-100 transition-opacity">
+                                <input type="checkbox" class="session-checkbox w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    onclick="event.stopPropagation()">
+                            </div>
+                            <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path>
+                            </svg>
+                            <div class="flex-1 text-ellipsis max-h-5 overflow-hidden break-all relative">
+                                ${session.title}
+                            </div>
+                            <button class="delete-session opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded-md transition-opacity"
+                                onclick="deleteSession(event, '${session.id}')">
+                                <svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" class="h-4 w-4 text-gray-500">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+                
+                // 重新初始化批量操作
+                initBatchOperations();
+            }
+        }
+    } catch (error) {
+        console.error('更新会话列表失败:', error);
+    }
+}
+</script>
+
+<!-- 修改Markdown样式 -->
+<style>
+.markdown-body {
+    color: inherit;
+    background-color: transparent;
+}
+.markdown-body pre {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 1rem;
+}
+.markdown-body code {
+    color: inherit;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+</style>
+{% endblock %} 

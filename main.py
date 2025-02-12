@@ -10,6 +10,8 @@ import logging
 from datetime import datetime
 import os
 import uvicorn
+from modules.chatgpt.routes import router as chatgpt_router
+from core.database import init_db
 
 # 配置日志
 logging.basicConfig(
@@ -39,6 +41,9 @@ app.mount("/toolsfile/youtube/batch_videos", StaticFiles(directory=BATCH_VIDEOS_
 # 配置模板
 templates = Jinja2Templates(directory="templates")
 
+# 初始化数据库
+init_db()
+
 # 首页路由
 @app.get("/", name="index")
 async def index(request: Request):
@@ -53,6 +58,7 @@ async def index(request: Request):
 
 # 注册YouTube模块路由 - 确保在通用工具路由之前注册
 app.include_router(youtube_router, prefix="/tools/youtube", tags=["youtube"])
+app.include_router(chatgpt_router, prefix="/tools/chatgpt", tags=["chatgpt"])
 
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
@@ -66,9 +72,9 @@ async def tool_page(request: Request, tool_id: str):
             status_code=404
         )
     
-    # 如果是YouTube下载器，重定向到专门的路由
-    if tool_id == 'youtube':
-        return RedirectResponse(url="/tools/youtube/")
+    # 如果是YouTube下载器或ChatGPT助手，重定向到专门的路由
+    if tool_id in ['youtube', 'chatgpt']:
+        return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面
     tool_config = TOOLS_CONFIG[tool_id]

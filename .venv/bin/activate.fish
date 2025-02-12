@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /Users/jianfuyang/Desktop/youtube_downloader/.venv
+set -gx VIRTUAL_ENV /Users/jianfuyang/Desktop/Yang/AICursor/youtube_downloader/.venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

@@ -10,3 +10,4 @@ batch_videos/
 .cursorrules
 *__pycache__/
 toolsfile/
+.env

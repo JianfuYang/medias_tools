@@ -1,4 +1,4 @@
-#!/Users/jianfuyang/Desktop/youtube_downloader/.venv/bin/python
+#!/Users/jianfuyang/Desktop/Yang/AICursor/youtube_downloader/.venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
