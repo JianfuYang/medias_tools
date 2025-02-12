@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timedelta
 import os
 import json
+import urllib.parse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ async def youtube_index(request: Request, db: Session = Depends(get_db)):
     
     for video in videos:
         logger.info(f"视频文件路径: {video.file_path}")
+        logger.info(f"视频文件路径: {video.thumbnail_path}")
         video_date = '/'.join(video.file_path.split('/')[3:4])
         if video_date in dates:
             videos_by_date[video_date].append(video)
@@ -65,7 +67,7 @@ async def batch_page(request: Request, db: Session = Depends(get_batch_db)):
         for video in videos:
             try:
                 # 从文件路径中提取日期
-                logger.info(f"batch视频文件路径: {video.file_path}")
+                # logger.info(f"batch视频文件路径: {video.file_path}")
                 date_str = video.file_path.split('/')[3]  # toolsfile/youtube/batch_videos/2025-01-10/user/video.mp4
                 
                 # 初始化日期分组
@@ -180,29 +182,86 @@ async def history_page(request: Request, db: Session = Depends(get_db)):
         logger.error(f"获取历史记录失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/batch/progress/{channel_id}")
+async def check_batch_progress(channel_id: str, db: Session = Depends(get_batch_db)):
+    """检查批量下载进度"""
+    try:
+        # 解码channel_id
+        decoded_channel_id = channel_id
+        try:
+            decoded_channel_id = urllib.parse.unquote(channel_id)
+        except Exception as e:
+            logger.warning(f"解码channel_id失败: {str(e)}")
+        
+        logger.info(f"检查进度 - channel_id: {decoded_channel_id}")
+        
+        # 查找最新的下载记录
+        video = db.query(BatchVideo)\
+            .filter(BatchVideo.channel_id == decoded_channel_id)\
+            .order_by(BatchVideo.id.desc())\
+            .first()
+            
+        if not video:
+            return {
+                "status": "error",
+                "error_message": "未找到下载记录"
+            }
+            
+        return {
+            "status": video.status,
+            "error_message": video.error_message if video.status == 'error' else None,
+            "total_videos": video.total_videos if hasattr(video, 'total_videos') else 0,
+            "downloaded_videos": video.downloaded_videos if hasattr(video, 'downloaded_videos') else 0
+        }
+        
+    except Exception as e:
+        logger.error(f"检查进度失败: {str(e)}")
+        return {
+            "status": "error",
+            "error_message": f"检查进度失败: {str(e)}"
+        }
+
 @router.post("/batch/download")
-async def start_batch_download(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_batch_db)):
+async def start_batch_download(
+    request: Request, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_batch_db)
+):
     """开始批量下载"""
     try:
         data = await request.json()
-        urls = data.get('urls', '')
-        url_list = urls.split('\n')
-        url_list = [url.strip() for url in url_list if url.strip()]
+        url = data.get('urls', '')
         
-        background_tasks.add_task(batch_download, url_list, db)
+        # 提取channel_id
+        channel_id = url
+        if '@' in url:
+            channel_id = url.split('@')[-1].split('/')[0]
+        elif '/channel/' in url:
+            channel_id = url.split('/channel/')[-1].split('/')[0]
+        elif '/c/' in url:
+            channel_id = url.split('/c/')[-1].split('/')[0]
+        elif '/user/' in url:
+            channel_id = url.split('/user/')[-1].split('/')[0]
+            
+        logger.info(f"开始批量下载 - URL: {url}, channel_id: {channel_id}")
+        
+        # 创建初始下载记录
+        video = BatchVideo(
+            channel_id=channel_id,
+            status='downloading',
+            youtube_url=url,
+            download_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        )
+        db.add(video)
+        db.commit()
+        
+        # 启动后台下载任务
+        background_tasks.add_task(batch_download, [url], db)
+        
         return {"message": "批量下载任务已启动"}
         
     except Exception as e:
         logger.error(f"启动批量下载失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/batch/progress/{video_id}")
-async def check_batch_progress(video_id: int, db: Session = Depends(get_batch_db)):
-    """检查批量下载进度"""
-    try:
-        return get_batch_progress(video_id, db)
-    except Exception as e:
-        logger.error(f"检查进度失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # 其他路由... 

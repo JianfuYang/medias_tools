@@ -16,8 +16,8 @@ download_progress = {}
 YDL_OPTS = {
     'format': 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
     'merge_output_format': 'mp4',
-    'writethumbnail': True,
-    'writeinfojson': True,
+    'writethumbnail': False,
+    'writeinfojson': False,
     'quiet': False,
     'no_warnings': False,
     'ignoreerrors': True,
@@ -209,7 +209,7 @@ async def download_video(url: str, db: Session):
         logger.error(f"下载视频失败: {str(e)}")
         raise
 
-def batch_download(urls: list, db: Session):
+async def batch_download(urls: list, db: Session):
     """批量下载视频"""
     try:
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -217,50 +217,109 @@ def batch_download(urls: list, db: Session):
         for url in urls:
             try:
                 with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-                    # 获取视频信息
+                    # 获取频道信息
+                    logger.info(f"获取频道信息: {url}")
                     info = ydl.extract_info(url, download=False)
-                    video_id = info['id']
-                    channel_id = info.get('uploader_id', 'unknown')
                     
+                    # 提取频道ID和名称
+                    channel_id = None
+                    channel_id = info['uploader_id'][1:]
+                    if not channel_id:
+                        raise ValueError("无法获取频道ID")
+                        
+                    logger.info(f"获取频道ID: {channel_id}")
                     # 构建保存路径
                     save_dir = os.path.join(BATCH_VIDEOS_DIR, date_str, channel_id)
                     os.makedirs(save_dir, exist_ok=True)
+                    # thumbnails_dir = os.path.join(save_dir, 'thumbnails')
+                    thumbnails_dir = save_dir # 批量下载时视频缩略图片直接放在当前目录下
+                    os.makedirs(thumbnails_dir, exist_ok=True)
                     
-                    # 创建数据库记录
-                    video = BatchVideo(
-                        title=info.get('title', f'视频 {video_id}'),
-                        author=info.get('uploader_id', '未知作者'),
-                        channel_id=channel_id,
-                        duration=info.get('duration', 0),
-                        description=info.get('description', '无描述'),
-                        youtube_url=url,
-                        file_path=os.path.join(save_dir, f'{video_id}.mp4'),
-                        audio_path=os.path.join(save_dir, f'{video_id}.m4a'),
-                        thumbnail_path=os.path.join(save_dir, f'{video_id}.jpg'),
-                        upload_time=info.get('upload_date', ''),
-                        download_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        status='downloading'
-                    )
-                    db.add(video)
-                    db.commit()
+                    # 获取频道的所有视频
+                    logger.info(f"获取频道视频列表: {channel_id}")
+                    channel_videos = []
+                    if 'entries' in info:
+                        channel_videos = list(info['entries'])
                     
-                    # 设置下载选项
-                    YDL_OPTS.update({
-                        'outtmpl': os.path.join(save_dir, f'{video_id}.%(ext)s'),
-                        'progress_hooks': [lambda d: batch_progress_hook(d, video.id, db)],
-                    })
+                    # 更新数据库中的视频总数
+                    video = db.query(BatchVideo)\
+                        .filter(BatchVideo.channel_id == channel_id)\
+                        .order_by(BatchVideo.id.desc())\
+                        .first()
+                    if video:
+                        video.total_videos = len(channel_videos)
+                        video.downloaded_videos = 0
+                        db.commit()
                     
-                    # 下载视频
-                    ydl.download([url])
+                    # 下载每个视频
+                    for i, video_info in enumerate(channel_videos):
+                        try:
+                            if not video_info:
+                                continue
+                                
+                            video_id = video_info.get('id')
+                            if not video_id:
+                                continue
+                                
+                            # 设置下载选项
+                            ydl_opts = YDL_OPTS.copy()
+                            ydl_opts.update({
+                                'outtmpl': os.path.join(save_dir, f'{video_id}.%(ext)s'),
+                                'writethumbnail': True,
+                            })
+                            
+                            # 下载视频
+                            logger.info(f"下载视频: {video_id}")
+                            with yt_dlp.YoutubeDL(ydl_opts) as video_ydl:
+                                video_ydl.download([video_info['webpage_url']])
+                            
+                            # 处理缩略图
+                            thumbnail_path = os.path.join(thumbnails_dir, f'{video_id}.jpg')
+                            webp_path = os.path.join(save_dir, f'{video_id}.webp')
+                            
+                            if os.path.exists(webp_path):
+                                convert_thumbnail(webp_path, thumbnail_path)
+                                # os.remove(webp_path)
+                            elif not os.path.exists(thumbnail_path):
+                                video_path = os.path.join(save_dir, f'{video_id}.mp4')
+                                extract_thumbnail(video_path, thumbnail_path)
+                            
+                            # 更新数据库记录
+                            video_record = BatchVideo(
+                                title=video_info.get('title', f'视频 {video_id}'),
+                                author=video_info.get('uploader_id', '未知作者'),
+                                channel_id=channel_id,
+                                duration=video_info.get('duration', 0),
+                                description=video_info.get('description', '无描述'),
+                                youtube_url=video_info.get('webpage_url', ''),
+                                file_path=os.path.join(save_dir, f'{video_id}.mp4'),
+                                audio_path=os.path.join(save_dir, f'{video_id}.m4a'),
+                                thumbnail_path=thumbnail_path,
+                                upload_time=video_info.get('upload_date', ''),
+                                download_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                status='completed',
+                                file_size=os.path.getsize(os.path.join(save_dir, f'{video_id}.mp4')) / (1024 * 1024)  # MB
+                            )
+                            db.add(video_record)
+                            
+                            # 更新进度
+                            if video:
+                                video.downloaded_videos = i + 1
+                                video.status = 'downloading'
+                            db.commit()
+                            
+                        except Exception as e:
+                            logger.error(f"下载单个视频失败: {str(e)}")
+                            continue
                     
-                    # 更新文件大小和状态
-                    video.file_size = os.path.getsize(video.file_path) / (1024 * 1024)  # MB
-                    video.status = 'completed'
-                    db.commit()
+                    # 更新最终状态
+                    if video:
+                        video.status = 'completed'
+                        db.commit()
                     
             except Exception as e:
-                logger.error(f"批量下载单个视频失败: {str(e)}")
-                if 'video' in locals():
+                logger.error(f"批量下载单个频道失败: {str(e)}")
+                if 'video' in locals() and video:
                     video.status = 'error'
                     video.error_message = str(e)
                     db.commit()
