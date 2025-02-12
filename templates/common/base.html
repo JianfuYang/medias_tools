@@ -14,10 +14,19 @@
 
         <!-- 右侧内容区域 -->
         <div class="flex-1 overflow-auto">
+            <!-- 页眉 -->
+            {% include 'common/header.html' %}
+            
+            <!-- 主要内容 -->
             <main class="p-8">
                 {% block content %}{% endblock %}
             </main>
+
+            <!-- 页脚 -->
+            {% include 'common/footer.html' %}
         </div>
     </div>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html> 

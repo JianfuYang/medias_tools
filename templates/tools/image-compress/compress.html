@@ -3,392 +3,91 @@
 {% block title %}图片压缩 - 媒体效率工具库{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <!-- 标题区域 -->
-    <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-gray-900">图片压缩工具</h1>
-        <p class="mt-2 text-gray-600">支持JPG、PNG、WebP等格式,最多可同时压缩20张图片</p>
+<div class="container mx-auto px-4">
+    <!-- 页面标题 -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">图片压缩</h1>
+        <p class="mt-2 text-gray-600">轻松压缩图片，优化文件大小，保持图片质量</p>
     </div>
 
-    <!-- 上传区域 -->
-    <div class="w-full max-w-3xl mx-auto">
-        <div id="dropZone" 
-            class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
-            <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
-            <div class="space-y-4">
-                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- 主要内容区域 -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <!-- 上传区域 -->
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div class="space-y-2">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <div class="text-gray-600">
-                    <span class="font-medium text-blue-600 hover:text-blue-500">点击上传</span>
-                    或将图片拖放到这里
+                <div class="text-sm text-gray-600">
+                    <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                        <span>点击上传图片</span>
+                        <input id="file-upload" name="file" type="file" class="sr-only" accept="image/*" multiple>
+                    </label>
+                    <p class="pl-1">或拖放图片到此处</p>
                 </div>
-                <p class="text-xs text-gray-500">支持 JPG、PNG、WebP 格式</p>
-            </div>
-            <div id="dropHint" 
-                class="absolute inset-0 bg-blue-50 bg-opacity-90 flex items-center justify-center hidden">
-                <div class="text-blue-600 text-lg font-medium">
-                    释放鼠标以上传图片
-                </div>
+                <p class="text-xs text-gray-500">支持 PNG、JPG、JPEG、WebP 格式</p>
             </div>
         </div>
 
         <!-- 压缩选项 -->
-        <div class="mt-6 p-4 bg-white rounded-lg shadow">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">压缩选项</h3>
-            <div class="space-y-4">
+        <div class="mt-6">
+            <h3 class="text-lg font-medium text-gray-900">压缩选项</h3>
+            <div class="mt-4 space-y-4">
+                <!-- 质量设置 -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">压缩质量</label>
-                    <input type="range" id="quality" min="0" max="100" value="80" 
-                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <div class="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>低质量</span>
-                        <span id="qualityValue">80%</span>
-                        <span>高质量</span>
+                    <label for="quality" class="block text-sm font-medium text-gray-700">压缩质量</label>
+                    <div class="mt-1 flex items-center">
+                        <input type="range" id="quality" name="quality" min="0" max="100" value="80" 
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <span class="ml-2 text-sm text-gray-600" id="quality-value">80%</span>
                     </div>
                 </div>
+
+                <!-- 最大宽度设置 -->
+                <div>
+                    <label for="max-width" class="block text-sm font-medium text-gray-700">最大宽度</label>
+                    <div class="mt-1">
+                        <input type="number" id="max-width" name="max-width" 
+                               class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                               placeholder="可选，限制图片最大宽度">
+                    </div>
+                </div>
+
+                <!-- 保持EXIF信息 -->
                 <div class="flex items-center">
-                    <input type="checkbox" id="keepExif" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <label for="keepExif" class="ml-2 text-sm text-gray-700">保留EXIF信息</label>
+                    <input type="checkbox" id="keep-exif" name="keep-exif"
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="keep-exif" class="ml-2 block text-sm text-gray-900">
+                        保留EXIF信息
+                    </label>
                 </div>
             </div>
         </div>
 
-        <!-- 图片预览列表 -->
-        <div id="imageList" class="mt-6 space-y-4"></div>
-
-        <!-- 添加批量操作按钮 -->
-        <div class="flex justify-between items-center mt-6">
-            <div class="space-x-4">
-                <button id="compressAllBtn" 
-                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed hidden">
-                    压缩全部
-                </button>
-                <button id="downloadAllBtn"
-                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed hidden">
-                    下载全部
-                </button>
-                <button id="clearAllBtn"
-                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed hidden">
-                    清空列表
-                </button>
-            </div>
-            <div class="text-sm text-gray-500">
-                已选择 <span id="selectedCount">0</span> 张图片
-            </div>
+        <!-- 压缩按钮 -->
+        <div class="mt-6">
+            <button type="button" id="compress-button"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                开始压缩
+            </button>
         </div>
 
-        <!-- 添加更多压缩选项 -->
-        <div class="mt-6 p-4 bg-white rounded-lg shadow">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">高级选项</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">最大宽度</label>
-                    <input type="number" id="maxWidth" value="1920" min="100" 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <p class="mt-1 text-xs text-gray-500">保持比例缩放,0表示不限制</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">输出格式</label>
-                    <select id="outputFormat" 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="auto">自动(保持原格式)</option>
-                        <option value="image/jpeg">JPG</option>
-                        <option value="image/png">PNG</option>
-                        <option value="image/webp">WebP</option>
-                    </select>
-                </div>
+        <!-- 结果预览区域 -->
+        <div class="mt-8 hidden" id="results-area">
+            <h3 class="text-lg font-medium text-gray-900">压缩结果</h3>
+            <div class="mt-4 grid grid-cols-1 gap-4" id="results-list">
+                <!-- 结果项会动态添加到这里 -->
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- 图片处理脚本 -->
+{% block scripts %}
 <script>
-// 全局变量
-let imageQueue = [];
-let compressing = false;
-
-// 在script标签内添加配置
-const CONFIG = {
-    maxFileSize: 10 * 1024 * 1024, // 10MB
-    maxFiles: 20,
-    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    maxWidth: 4096,
-    defaultQuality: 80
-};
-
-// 压缩图片并调整尺寸
-const compressImage = async (file, options = {}) => {
-    const {
-        quality = 0.8,
-        maxWidth = 0,
-        format = 'auto',
-        keepExif = false
-    } = options;
-
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                // 计算新尺寸
-                let newWidth = img.width;
-                let newHeight = img.height;
-                if (maxWidth > 0 && img.width > maxWidth) {
-                    const ratio = maxWidth / img.width;
-                    newWidth = maxWidth;
-                    newHeight = Math.round(img.height * ratio);
-                }
-
-                // 创建Canvas
-                const canvas = document.createElement('canvas');
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-                // 确定输出格式
-                const outputFormat = format === 'auto' ? file.type : format;
-
-                // 转换为Blob
-                canvas.toBlob((blob) => {
-                    resolve({
-                        blob,
-                        width: newWidth,
-                        height: newHeight,
-                        format: outputFormat
-                    });
-                }, outputFormat, quality);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-};
-
-// 添加进度显示函数
-const updateProgress = (current, total) => {
-    const compressAllBtn = document.getElementById('compressAllBtn');
-    if (current === total) {
-        compressAllBtn.textContent = '压缩全部';
-    } else {
-        compressAllBtn.textContent = `处理中 ${current}/${total}`;
-    }
-};
-
-// 批量压缩处理
-const processQueue = async () => {
-    if (compressing || imageQueue.length === 0) return;
-    
-    compressing = true;
-    const compressAllBtn = document.getElementById('compressAllBtn');
-    compressAllBtn.disabled = true;
-    
-    let processed = 0;
-    const total = imageQueue.filter(f => !f.compressed).length;
-    
-    try {
-        for (const file of imageQueue) {
-            if (!file.compressed) {
-                try {
-                    await updateImagePreview(file);
-                    file.compressed = true;
-                    processed++;
-                    updateProgress(processed, total);
-                } catch (error) {
-                    console.error(`处理文件失败: ${file.name}`, error);
-                    // 显示错误消息
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'text-red-600 text-sm mt-1';
-                    errorDiv.textContent = `处理失败: ${error.message}`;
-                    file.element?.appendChild(errorDiv);
-                }
-            }
-        }
-    } finally {
-        compressing = false;
-        compressAllBtn.disabled = false;
-        updateButtons();
-    }
-};
-
-// 下载所有压缩后的图片
-const downloadAll = () => {
-    imageQueue.forEach(file => {
-        if (file.compressed && file.compressedUrl) {
-            downloadImage(file.compressedUrl, file.name);
-        }
-    });
-};
-
-// 清空列表
-const clearAll = () => {
-    // 释放所有已创建的URL
-    imageQueue.forEach(file => {
-        if (file.compressedUrl) {
-            URL.revokeObjectURL(file.compressedUrl);
-        }
-    });
-    imageQueue = [];
-    document.getElementById('imageList').innerHTML = '';
-    updateButtons();
-};
-
-// 更新按钮状态
-const updateButtons = () => {
-    const hasImages = imageQueue.length > 0;
-    const hasCompressed = imageQueue.some(f => f.compressed);
-    
-    document.getElementById('compressAllBtn').classList.toggle('hidden', !hasImages);
-    document.getElementById('downloadAllBtn').classList.toggle('hidden', !hasCompressed);
-    document.getElementById('clearAllBtn').classList.toggle('hidden', !hasImages);
-    document.getElementById('selectedCount').textContent = imageQueue.length;
-};
-
-// 更新图片预览
-const updateImagePreview = async (file) => {
-    const quality = parseInt(document.getElementById('quality').value) / 100;
-    const result = await compressImage(file, {
-        quality: quality,
-        maxWidth: parseInt(document.getElementById('maxWidth').value),
-        format: document.getElementById('outputFormat').value
-    });
-    
-    const item = document.createElement('div');
-    item.className = 'flex items-center gap-4 p-4 bg-white rounded-lg shadow';
-    item.innerHTML = `
-        <div class="flex-shrink-0 w-20 h-20">
-            <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover rounded">
-        </div>
-        <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-gray-900 truncate">${file.name}</p>
-                <button class="text-red-600 hover:text-red-800" onclick="removeFile('${file.name}')">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="mt-1 flex items-center text-sm text-gray-500">
-                <span>原始大小: ${(file.size / 1024).toFixed(2)}KB</span>
-                <span class="mx-2">→</span>
-                <span>压缩后: ${(result.blob.size / 1024).toFixed(2)}KB</span>
-                <span class="ml-2 text-green-600">(${(100 - (result.blob.size / file.size) * 100).toFixed(1)}%)</span>
-            </div>
-            <div class="mt-2">
-                <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                    onclick="downloadImage('${URL.createObjectURL(result.blob)}', '${file.name}')">
-                    下载
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('imageList').appendChild(item);
-
-    // 在updateImagePreview函数中保存URL
-    const compressedUrl = URL.createObjectURL(result.blob);
-    file.compressedUrl = compressedUrl;
-};
-
-// 下载压缩后的图片
-const downloadImage = (url, filename) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `compressed_${filename}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-};
-
-// 修改handleFiles函数
-const handleFiles = (files) => {
-    const validFiles = Array.from(files).filter(file => {
-        // 检查文件类型
-        if (!CONFIG.allowedTypes.includes(file.type)) {
-            alert(`不支持的文件格式: ${file.name}`);
-            return false;
-        }
-        // 检查文件大小
-        if (file.size > CONFIG.maxFileSize) {
-            alert(`文件过大: ${file.name} (最大支持${CONFIG.maxFileSize/1024/1024}MB)`);
-            return false;
-        }
-        return true;
-    });
-
-    // 检查总文件数
-    if (imageQueue.length + validFiles.length > CONFIG.maxFiles) {
-        alert(`最多只能同时处理${CONFIG.maxFiles}张图片`);
-        return;
-    }
-
-    validFiles.forEach(file => {
-        if (!imageQueue.some(f => f.name === file.name)) {
-            imageQueue.push({
-                file,
-                compressed: false,
-                compressedUrl: null
-            });
-        }
-    });
-    updateButtons();
-    processQueue();
-};
-
-// 添加删除单个文件函数
-const removeFile = (filename) => {
-    const index = imageQueue.findIndex(f => f.name === filename);
-    if (index !== -1) {
-        // 释放URL
-        if (imageQueue[index].compressedUrl) {
-            URL.revokeObjectURL(imageQueue[index].compressedUrl);
-        }
-        imageQueue.splice(index, 1);
-        updateButtons();
-    }
-};
-
-// 初始化事件监听
-document.addEventListener('DOMContentLoaded', () => {
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const quality = document.getElementById('quality');
-    const qualityValue = document.getElementById('qualityValue');
-    
-    // 更新质量显示
-    quality.addEventListener('input', (e) => {
-        qualityValue.textContent = `${e.target.value}%`;
-    });
-    
-    // 添加批量操作按钮事件
-    document.getElementById('compressAllBtn').addEventListener('click', processQueue);
-    document.getElementById('downloadAllBtn').addEventListener('click', downloadAll);
-    document.getElementById('clearAllBtn').addEventListener('click', clearAll);
-    
-    // 点击上传
-    dropZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    
-    // 拖放上传
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('border-blue-500');
-        document.getElementById('dropHint').classList.remove('hidden');
-    });
-    
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('border-blue-500');
-        document.getElementById('dropHint').classList.add('hidden');
-    });
-    
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-blue-500');
-        document.getElementById('dropHint').classList.add('hidden');
-        handleFiles(e.dataTransfer.files);
-    });
+// 这里将添加图片压缩的JavaScript代码
+document.getElementById('quality').addEventListener('input', function(e) {
+    document.getElementById('quality-value').textContent = e.target.value + '%';
 });
 </script>
 {% endblock %} 
