@@ -126,6 +126,36 @@ def convert_thumbnail(input_path: str, output_path: str) -> bool:
         logger.error(f"转换缩略图失败: {str(e)}")
         return False
 
+def filter_recent_shorts(video_info: dict, months: int = 2) -> bool:
+    """
+    过滤近期短视频
+    Args:
+        video_info: 视频信息字典
+        months: 保留最近几个月的视频，默认2个月
+    Returns:
+        bool: True表示保留该视频，False表示过滤掉
+    """
+    try:
+        # 检查是否为短视频
+        if not video_info.get('duration') or video_info.get('duration') > 60:
+            return False
+            
+        # 获取上传时间
+        upload_date = video_info.get('upload_date')
+        if not upload_date:
+            return False
+            
+        # 转换上传时间为datetime对象
+        upload_datetime = datetime.strptime(upload_date, '%Y%m%d')
+        
+        # 计算时间差
+        time_diff = datetime.now() - upload_datetime
+        return time_diff.days <= months * 30
+        
+    except Exception as e:
+        logger.error(f"过滤视频时出错: {str(e)}")
+        return False
+
 async def download_video(url: str, db: Session):
     """后台下载视频"""
     try:
@@ -231,15 +261,26 @@ async def batch_download(urls: list, db: Session):
                     # 构建保存路径
                     save_dir = os.path.join(BATCH_VIDEOS_DIR, date_str, channel_id)
                     os.makedirs(save_dir, exist_ok=True)
-                    # thumbnails_dir = os.path.join(save_dir, 'thumbnails')
-                    thumbnails_dir = save_dir # 批量下载时视频缩略图片直接放在当前目录下
+                    thumbnails_dir = save_dir
                     os.makedirs(thumbnails_dir, exist_ok=True)
                     
-                    # 获取频道的所有视频
+                    # 获取频道的所有视频并过滤
                     logger.info(f"获取频道视频列表: {channel_id}")
                     channel_videos = []
                     if 'entries' in info:
-                        channel_videos = list(info['entries'])
+                        # 获取所有视频
+                        all_videos = [v for v in info['entries'] if v]
+                        total_shorts = len([v for v in all_videos if v.get('duration', 0) <= 60])
+                        
+                        # 过滤近期短视频
+                        channel_videos = [
+                            video for video in all_videos 
+                            if video and filter_recent_shorts(video)
+                        ]
+                        
+                        logger.info(f"频道 {channel_id} 统计:")
+                        logger.info(f"- 总短视频数: {total_shorts}")
+                        logger.info(f"- 近2个月短视频数: {len(channel_videos)}")
                     
                     # 更新数据库中的视频总数
                     video = db.query(BatchVideo)\
