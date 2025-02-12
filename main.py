@@ -56,9 +56,21 @@ async def index(request: Request):
         }
     )
 
-# 注册YouTube模块路由 - 确保在通用工具路由之前注册
+# 注册YouTube模块路由
 app.include_router(youtube_router, prefix="/tools/youtube", tags=["youtube"])
 app.include_router(chatgpt_router, prefix="/tools/chatgpt", tags=["chatgpt"])
+
+# 图片压缩工具路由 - 确保在通用工具路由之前
+@app.get("/tools/image-compress", name="image_compress")
+async def image_compress(request: Request):
+    return templates.TemplateResponse(
+        "tools/image-compress/compress.html",
+        {
+            "request": request,
+            "current_tool": "/tools/image-compress",
+            "year": datetime.now().year
+        }
+    )
 
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
