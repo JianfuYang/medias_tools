@@ -1,6 +1,6 @@
 {% extends "common/base.html" %}
 
-{% block title %}图片调整大小 - 媒体效率工具库{% endblock %}
+{% block title %}调整大小 - 媒体效率工具库{% endblock %}
 
 {% block head %}
 {{ super() }}
@@ -36,136 +36,149 @@
     border-color: #3b82f6;
     background-color: #f8fafc;
 }
+
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.comparison-item {
+    text-align: center;
+}
+
+.comparison-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto min-h-[600px] flex flex-col">
     <!-- 标题区域 -->
     <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-900">图片调整大小</h1>
+        <h1 class="text-2xl font-bold text-gray-900">调整大小</h1>
         <p class="mt-2 text-gray-600">在浏览器中快速调整图片尺寸，无需上传服务器</p>
     </div>
 
-    <!-- 上传区域 -->
-    <div class="mb-8">
-        <div id="drag-area" class="drag-area flex justify-center px-6 pt-5 pb-6 rounded-lg">
-            <div class="space-y-1 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <div class="text-sm text-gray-600">
-                    <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                        <span>选择图片</span>
-                        <input id="file-upload" type="file" class="sr-only" accept="image/*">
-                    </label>
-                    <span class="pl-1">或拖放图片到此处</span>
-                </div>
-                <p class="text-xs text-gray-500">支持 PNG、JPG、GIF 等格式</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- 调整选项 -->
-    <div class="mb-8 bg-white p-6 rounded-lg shadow-sm">
-        <div class="grid grid-cols-2 gap-6">
-            <!-- 宽度输入 -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700">宽度</label>
-                <div class="mt-1 flex rounded-md shadow-sm">
-                    <input type="number" id="width" class="dimension-input focus:ring-blue-500 focus:border-blue-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300" placeholder="宽度">
-                    <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        px
-                    </span>
-                </div>
-            </div>
-
-            <!-- 高度输入 -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700">高度</label>
-                <div class="mt-1 flex rounded-md shadow-sm">
-                    <input type="number" id="height" class="dimension-input focus:ring-blue-500 focus:border-blue-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300" placeholder="高度">
-                    <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                        px
-                    </span>
+    <!-- 主要功能区域 -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-8">
+        <!-- 上传区域 -->
+        <div id="upload-area">
+            <div id="drag-area" class="drag-area w-full h-[200px] flex flex-col justify-center items-center px-6 rounded-lg border-2 border-dashed border-gray-300">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <div class="mt-4">
+                        <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                            <span>选择图片</span>
+                            <input id="file-upload" type="file" class="sr-only" accept="image/*">
+                        </label>
+                        <span class="pl-1">或拖放图片到此处</span>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">支持 PNG、JPG、GIF 等格式</p>
                 </div>
             </div>
         </div>
 
-        <!-- 锁定比例 -->
-        <div class="mt-4 flex items-center justify-between">
-            <button class="aspect-ratio-lock flex items-center text-gray-700">
-                <svg id="lock-icon" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span class="ml-2 text-sm">锁定宽高比</span>
-            </button>
+        <!-- 调整选项 -->
+        <div id="options-area" class="mt-6 pt-6 border-t border-gray-200 {{ 'opacity-50' if not has_image else '' }}">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">调整设置</h3>
+            <div class="grid grid-cols-2 gap-6">
+                <!-- 宽度输入 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">宽度</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="number" id="width" min="1" max="10000" class="dimension-input focus:ring-blue-500 focus:border-blue-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300" placeholder="宽度" disabled>
+                        <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">px</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">最大宽度: 10000px</p>
+                </div>
+                <!-- 高度输入 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">高度</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="number" id="height" min="1" max="10000" class="dimension-input focus:ring-blue-500 focus:border-blue-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300" placeholder="高度" disabled>
+                        <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">px</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">最大高度: 10000px</p>
+                </div>
+            </div>
 
-            <!-- 下载按钮 -->
-            <button onclick="downloadImage()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled id="download-btn">
-                下载图片
-            </button>
+            <!-- 锁定比例和调整按钮 -->
+            <div class="mt-4 flex items-center justify-between">
+                <button class="aspect-ratio-lock flex items-center text-gray-700" disabled>
+                    <svg id="lock-icon" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span class="ml-2 text-sm">锁定宽高比</span>
+                </button>
+                <button id="resize-btn" disabled class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    调整大小
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- 预览区域 -->
-    <div id="preview-container" class="mb-8 bg-white p-6 rounded-lg shadow-sm hidden">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">预览</h3>
-        <div class="aspect-w-16 aspect-h-9 bg-gray-100 rounded-lg overflow-hidden">
-            <img id="preview-image" class="image-preview object-contain" alt="预览图">
-        </div>
-        <div class="mt-4 text-center text-sm text-gray-500">
-            调整后尺寸: <span id="resized-dimensions">0 × 0</span>
+    <div id="preview-container" class="hidden mb-8">
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">预览</h3>
+            <div class="comparison-container">
+                <div class="comparison-item">
+                    <div class="comparison-label">原始图片 <span id="original-dimensions"></span></div>
+                    <img id="original-image" class="image-preview mx-auto" src="" alt="原始图片">
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-label">调整后 <span id="preview-dimensions"></span></div>
+                    <img id="preview-image" class="image-preview mx-auto" src="" alt="预览图">
+                    <div id="download-area" class="mt-4 text-center hidden">
+                        <button id="download-btn" disabled class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            下载调整后的图片
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- 隐藏的Canvas用于处理图片 -->
+    <canvas id="resize-canvas" class="hidden"></canvas>
 </div>
 
-<!-- 隐藏的Canvas用于图片处理 -->
-<canvas id="resize-canvas" style="display: none;"></canvas>
-{% endblock %}
-
-{% block scripts %}
 <script>
 let originalImage = null;
-let aspectRatioLocked = true;
 let originalWidth = 0;
 let originalHeight = 0;
+let aspectRatioLocked = true;
 
 // 拖放处理
 const dragArea = document.getElementById('drag-area');
 
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dragArea.addEventListener(eventName, preventDefaults, false);
-});
-
-function preventDefaults(e) {
+dragArea.addEventListener('dragover', function(e) {
     e.preventDefault();
-    e.stopPropagation();
-}
-
-['dragenter', 'dragover'].forEach(eventName => {
-    dragArea.addEventListener(eventName, highlight, false);
+    this.classList.add('dragover');
 });
 
-['dragleave', 'drop'].forEach(eventName => {
-    dragArea.addEventListener(eventName, unhighlight, false);
+dragArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
 });
 
-function highlight(e) {
-    dragArea.classList.add('dragover');
-}
-
-function unhighlight(e) {
-    dragArea.classList.remove('dragover');
-}
-
-dragArea.addEventListener('drop', handleDrop, false);
-
-function handleDrop(e) {
+dragArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+    
     const dt = e.dataTransfer;
     const file = dt.files[0];
     handleFile(file);
-}
+});
 
 // 文件上传处理
 document.getElementById('file-upload').addEventListener('change', function(e) {
@@ -191,14 +204,30 @@ function handleFile(file) {
             originalHeight = this.height;
             
             // 设置初始尺寸
-            document.getElementById('width').value = originalWidth;
-            document.getElementById('height').value = originalHeight;
+            const widthInput = document.getElementById('width');
+            const heightInput = document.getElementById('height');
+            widthInput.value = originalWidth;
+            heightInput.value = originalHeight;
             
-            // 显示预览
-            document.getElementById('preview-image').src = e.target.result;
+            // 启用所有控件
+            widthInput.disabled = false;
+            heightInput.disabled = false;
+            document.querySelector('.aspect-ratio-lock').disabled = false;
+            document.getElementById('resize-btn').disabled = false;
+            document.getElementById('options-area').classList.remove('opacity-50');
+            
+            // 显示原始图片
+            document.getElementById('original-image').src = e.target.result;
+            document.getElementById('original-dimensions').textContent = 
+                `(${originalWidth} × ${originalHeight})`;
+            
+            // 显示预览区域
             document.getElementById('preview-container').classList.remove('hidden');
-            document.getElementById('download-btn').disabled = false;
+            // 显示下载区域但禁用按钮
+            document.getElementById('download-area').classList.remove('hidden');
+            document.getElementById('download-btn').disabled = true;
             
+            // 进行首次预览
             updatePreview();
         };
         originalImage.src = e.target.result;
@@ -208,19 +237,43 @@ function handleFile(file) {
 
 // 尺寸输入处理
 document.getElementById('width').addEventListener('input', function(e) {
+    // 限制输入范围
+    let value = parseInt(e.target.value);
+    if (value > 10000) {
+        value = 10000;
+        e.target.value = value;
+    } else if (value < 1) {
+        value = 1;
+        e.target.value = value;
+    }
+
     if (aspectRatioLocked && originalWidth > 0) {
         const ratio = originalHeight / originalWidth;
-        document.getElementById('height').value = Math.round(e.target.value * ratio);
+        let newHeight = Math.round(value * ratio);
+        // 确保高度也在范围内
+        newHeight = Math.min(Math.max(newHeight, 1), 10000);
+        document.getElementById('height').value = newHeight;
     }
-    updatePreview();
 });
 
 document.getElementById('height').addEventListener('input', function(e) {
+    // 限制输入范围
+    let value = parseInt(e.target.value);
+    if (value > 10000) {
+        value = 10000;
+        e.target.value = value;
+    } else if (value < 1) {
+        value = 1;
+        e.target.value = value;
+    }
+
     if (aspectRatioLocked && originalHeight > 0) {
         const ratio = originalWidth / originalHeight;
-        document.getElementById('width').value = Math.round(e.target.value * ratio);
+        let newWidth = Math.round(value * ratio);
+        // 确保宽度也在范围内
+        newWidth = Math.min(Math.max(newWidth, 1), 10000);
+        document.getElementById('width').value = newWidth;
     }
-    updatePreview();
 });
 
 // 锁定比例切换
@@ -234,21 +287,25 @@ document.querySelector('.aspect-ratio-lock').addEventListener('click', function(
     }
 });
 
+// 调整按钮点击处理
+document.getElementById('resize-btn').addEventListener('click', function() {
+    updatePreview();
+});
+
 // 更新预览
 function updatePreview() {
-    const width = parseInt(document.getElementById('width').value);
-    const height = parseInt(document.getElementById('height').value);
-    document.getElementById('resized-dimensions').textContent = `${width} × ${height}`;
-}
-
-// 下载调整后的图片
-function downloadImage() {
     if (!originalImage) return;
     
-    const canvas = document.getElementById('resize-canvas');
     const width = parseInt(document.getElementById('width').value);
     const height = parseInt(document.getElementById('height').value);
     
+    // 检查尺寸是否在允许范围内
+    if (width < 1 || width > 10000 || height < 1 || height > 10000) {
+        alert('请输入1-10000之间的尺寸');
+        return;
+    }
+    
+    const canvas = document.getElementById('resize-canvas');
     canvas.width = width;
     canvas.height = height;
     
@@ -257,11 +314,42 @@ function downloadImage() {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(originalImage, 0, 0, width, height);
     
-    // 创建下载链接
-    const link = document.createElement('a');
-    link.download = 'resized-image.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    // 更新预览图
+    const previewImage = document.getElementById('preview-image');
+    previewImage.src = canvas.toDataURL('image/png');
+    
+    // 等待预览图加载完成后再启用下载按钮
+    previewImage.onload = function() {
+        document.getElementById('download-area').classList.remove('hidden');
+        document.getElementById('download-btn').disabled = false;
+    };
+    
+    document.getElementById('preview-dimensions').textContent = `(${width} × ${height})`;
+    document.getElementById('resized-dimensions').textContent = `${width} × ${height}`;
 }
+
+// 优化下载功能
+document.getElementById('download-btn').addEventListener('click', function() {
+    if (!originalImage) return;
+    
+    const canvas = document.getElementById('resize-canvas');
+    const width = parseInt(document.getElementById('width').value);
+    const height = parseInt(document.getElementById('height').value);
+    
+    try {
+        // 生成文件名
+        const timestamp = new Date().getTime();
+        const filename = `resized-${width}x${height}-${timestamp}.png`;
+        
+        // 创建下载链接
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } catch (error) {
+        console.error('下载图片失败:', error);
+        alert('下载图片失败，请重试');
+    }
+});
 </script>
 {% endblock %} 
