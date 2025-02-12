@@ -5,7 +5,6 @@ ignore/
 videos/
 *.db
 *.log
-static/
 batch_videos/
 .cursorrules
 *__pycache__/
