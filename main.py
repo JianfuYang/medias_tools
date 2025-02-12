@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -12,6 +12,10 @@ import os
 import uvicorn
 from modules.chatgpt.routes import router as chatgpt_router
 from core.database import init_db
+from PIL import Image
+import io
+import base64
+from modules.image_compress.routes import router as image_compress_router
 
 # 配置日志
 logging.basicConfig(
@@ -60,17 +64,12 @@ async def index(request: Request):
 app.include_router(youtube_router, prefix="/tools/youtube", tags=["youtube"])
 app.include_router(chatgpt_router, prefix="/tools/chatgpt", tags=["chatgpt"])
 
-# 图片压缩工具路由 - 确保在通用工具路由之前
-@app.get("/tools/image-compress", name="image_compress")
-async def image_compress(request: Request):
-    return templates.TemplateResponse(
-        "tools/image-compress/compress.html",
-        {
-            "request": request,
-            "current_tool": "/tools/image-compress",
-            "year": datetime.now().year
-        }
-    )
+# 注册图片压缩模块路由
+app.include_router(
+    image_compress_router, 
+    prefix="/tools/image-compress",
+    tags=["image_compress"]
+)
 
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")

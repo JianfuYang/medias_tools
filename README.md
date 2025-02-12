@@ -1,10 +1,124 @@
 # 媒体效率工具库
 
-一个基于 FastAPI + Tailwind CSS 的在线媒体工具集合，提供视频下载、AI图像生成、文字卡片制作等功能。
+一个基于 FastAPI + Tailwind CSS 的综合性在线工具平台，集成了媒体处理、AI助手、实用工具等多种功能模块。
 
-## 主要功能
+## 平台概述
 
-### YouTube下载器
+### 核心特点
+- 模块化设计，易于扩展
+- 统一的用户界面和操作体验
+- 响应式布局，支持多端访问
+- RESTful API支持
+- 实时处理反馈
+- 批量处理能力
+
+### 功能分类
+
+#### 1. 媒体处理工具
+- **YouTube下载器**
+  - 单视频/批量下载
+  - 音视频分离
+  - 格式转换
+  - 在线预览
+- **图片处理**
+  - 图片压缩
+  - 格式转换
+  - 批量处理
+  - 在线预览
+- **音视频工具**（开发中）
+  - 视频压缩
+  - 格式转换
+  - 视频剪辑
+  - 音频提取
+
+#### 2. AI助手工具
+- **ChatGPT对话**
+  - 多轮对话支持
+  - 上下文记忆
+  - 代码高亮
+  - 会话导出
+- **AI图像生成**（开发中）
+  - 文本生图
+  - 图片编辑
+  - 风格迁移
+- **智能助手**（规划中）
+  - 文本摘要
+  - 代码解释
+  - 数据分析
+
+#### 3. 实用工具集
+- **文档处理**
+  - PDF转换
+  - 文字提取
+  - 格式转换
+- **开发工具**
+  - 代码格式化
+  - JSON编辑器
+  - 正则测试
+- **其他工具**
+  - 文字卡片生成
+  - 二维码生成
+  - 图表制作
+
+## 技术架构
+
+### 后端架构
+- **Web框架**: FastAPI
+- **数据库**: 
+  - SQLite (本地存储)
+  - Redis (缓存)
+- **媒体处理**:
+  - FFmpeg (音视频)
+  - Pillow (图片)
+  - yt-dlp (视频下载)
+- **AI集成**:
+  - OpenAI API
+  - Stable Diffusion
+- **任务队列**: Celery
+
+### 前端技术
+- **UI框架**: 
+  - TailwindCSS
+  - Alpine.js
+- **交互组件**:
+  - Video.js
+  - CodeMirror
+  - Chart.js
+- **构建工具**: 
+  - Webpack
+  - PostCSS
+
+### 部署架构
+- **应用服务器**: uvicorn
+- **反向代理**: Nginx
+- **容器化**: Docker
+- **CI/CD**: GitHub Actions
+
+## 项目结构
+```
+media-tools/
+├── config/                # 配置文件
+│   ├── settings.py       # 全局设置
+│   └── tools.py          # 工具配置
+├── core/                 # 核心模块
+│   ├── database.py      # 数据库配置
+│   ├── security.py      # 安全相关
+│   └── celery_app.py    # Celery配置
+├── modules/             # 功能模块
+│   ├── youtube/        # YouTube下载
+│   ├── image_compress/ # 图片压缩
+│   ├── chatgpt/       # AI对话
+│   └── utils/         # 通用工具
+├── static/             # 静态资源
+├── templates/          # 模板文件
+├── toolsfile/         # 文件存储
+├── tests/             # 测试用例
+└── docs/              # 文档
+```
+
+## 功能模块详解
+
+### 1. YouTube下载器
 - 支持单个视频下载和批量下载
 - 自动提取音频和缩略图
 - 支持下载YouTube Shorts短视频
@@ -13,147 +127,134 @@
 - 支持视频预览和在线播放
 - 显示详细的视频信息（标题、作者、时长等）
 
-### AI文生图（开发中）
-- 通过文字描述生成图像
-- 支持多种艺术风格
-- 提供参数微调功能
+### 2. 图片压缩工具
+- 支持多种图片格式(PNG、JPG、JPEG、WebP)
+- 智能压缩算法，在保证画质的同时大幅减小文件体积
+- 批量处理功能
+- 自定义压缩参数：
+  - 压缩质量(0-100)
+  - 最大宽度限制(可选)
+  - EXIF信息保留选项
+- 直观的压缩效果预览
+- 便捷的图片下载方式
 
-### 文字卡片生成（开发中）
-- 提供多种精美模板
-- 支持自定义样式
-- 一键生成分享图
+### 3. ChatGPT对话
+- **功能特点**
+  - 支持多种对话模式
+  - 代码高亮显示
+  - 会话历史管理
+  - Markdown渲染
+- **使用方法**
+  - 选择对话模式
+  - 输入问题
+  - 查看历史记录
+  - 导出会话
 
-## 技术栈
+## 开发规范
 
-### 后端
-- Python FastAPI
-- SQLAlchemy + SQLite
-- yt-dlp
-- FFmpeg
+### 代码规范
+- Python: PEP 8
+- JavaScript: ESLint
+- HTML/CSS: Prettier
+- 提交信息: Angular规范
 
-### 前端
-- Tailwind CSS
-- JavaScript
-- Video.js
-- Font Awesome
+### 文档规范
+- 代码注释完整
+- API文档及时更新
+- 更新日志维护
+- 测试用例覆盖
 
-### 模板引擎
-- Jinja2
+## 部署指南
 
-## 系统要求
-
-- Python 3.8+
-- FFmpeg
-- 足够的磁盘空间用于存储下载的视频
-
-## 安装步骤
-
-1. 克隆仓库：
+1. 克隆项目
 ```bash
-git clone [repository-url]
+git clone https://github.com/yourusername/media-tools.git
 cd media-tools
 ```
 
-2. 安装依赖：
+2. 安装依赖
 ```bash
 pip install -r requirements.txt
 ```
 
-3. 安装FFmpeg：
+3. 安装FFmpeg
 - Windows: 下载并添加到系统环境变量
 - macOS: `brew install ffmpeg`
 - Linux: `sudo apt-get install ffmpeg`
 
-4. 创建必要的目录：
+4. 创建必要的目录
 ```bash
 mkdir -p toolsfile/youtube/{videos,batch_videos}
 mkdir -p dbfile/youtube
 mkdir -p static/images
 ```
 
-## 目录结构
-
-```
-media-tools/
-├── config/                 # 配置文件
-│   ├── settings.py        # 全局设置
-│   └── tools.py           # 工具配置
-├── core/                  # 核心模块
-│   └── database.py       # 数据库配置
-├── modules/              # 功能模块
-│   └── youtube/         # YouTube下载模块
-├── static/              # 静态文件
-│   ├── css/            # 样式文件
-│   └── images/         # 图片资源
-├── templates/           # HTML模板
-│   ├── common/         # 公共模板
-│   ├── home/           # 首页模板
-│   ├── navigation/     # 导航模板
-│   └── tools/          # 工具模板
-├── toolsfile/          # 下载文件存储
-│   └── youtube/        # YouTube视频存储
-├── dbfile/             # 数据库文件
-│   └── youtube/        # YouTube数据库
-├── main.py             # 主程序
-└── requirements.txt    # Python依赖
-```
-
-## 使用说明
-
-1. 启动服务：
+5. 启动服务
 ```bash
-python main.py
+uvicorn main:app --reload
 ```
 
-2. 访问地址：`http://localhost:8000`
+6. 访问服务
+打开浏览器访问 http://localhost:8000
 
-3. YouTube下载器使用：
-   - 单视频下载：输入视频URL，点击下载
-   - 批量下载：输入频道URL，自动下载最近3个月的短视频
-   - 下载历史：查看和管理已下载的视频
+## 使用指南
 
-## 文件存储结构
+### YouTube下载器
+1. 单视频下载
+   - 输入视频URL
+   - 选择下载质量
+   - 点击下载按钮
+2. 批量下载
+   - 输入频道URL
+   - 设置下载参数
+   - 开始批量下载
+3. 下载管理
+   - 查看下载历史
+   - 管理已下载文件
+   - 预览和播放视频
 
-```
-toolsfile/
-└── youtube/
-    ├── videos/              # 单视频下载
-    │   └── YYYY-MM-DD/     # 按日期分类
-    │       ├── video_id.mp4
-    │       ├── video_id.m4a
-    │       └── thumbnails/
-    └── batch_videos/        # 批量下载
-        └── YYYY-MM-DD/     # 按日期分类
-            └── channel_id/  # 按频道分类
-                ├── video_id.mp4
-                ├── video_id.m4a
-                └── video_id.jpg
-```
+### 图片压缩工具
+1. 上传图片
+   - 点击上传或拖拽图片
+   - 支持批量上传
+2. 设置压缩参数
+   - 调整压缩质量
+   - 设置最大宽度
+   - 选择EXIF选项
+3. 下载结果
+   - 点击图片下载
+   - 批量下载全部
 
-## 注意事项
-
-1. 确保系统已正确安装FFmpeg
-2. 下载前检查磁盘空间是否充足
-3. 批量下载仅支持最近3个月的短视频
-4. 建议使用稳定的网络连接
-5. 部分视频可能因版权限制无法下载
+### ChatGPT对话
+1. 选择对话模式
+2. 输入问题
+3. 查看历史记录
+4. 导出会话
 
 ## 开发计划
 
-- [ ] 完善AI文生图功能
-- [ ] 添加文字卡片生成器
-- [ ] 支持更多视频平台
+### 2024 Q1
+- [ ] 完善AI助手功能
+- [ ] 优化媒体处理性能
 - [ ] 添加用户系统
-- [ ] 优化下载速度
-- [ ] 添加视频处理功能
+
+### 2024 Q2
+- [ ] 集成更多AI模型
+- [ ] 添加数据分析功能
+- [ ] 优化移动端体验
 
 ## 贡献指南
 
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 发起 Pull Request
+欢迎提交Issue和Pull Request。在提交PR之前，请确保：
+1. 代码符合项目规范
+2. 添加必要的测试
+3. 更新相关文档
 
 ## 许可证
 
-MIT License 
+MIT License
+
+## 联系方式
+
+- 项目主页：[GitHub](https://github.com/yourusername/media-tools)
+- 问题反馈：[Issues](https://github.com/yourusername/media-tools/issues) 
