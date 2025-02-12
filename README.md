@@ -1,31 +1,49 @@
-# YouTube 视频下载器
+# 媒体效率工具库
 
-一个基于 FastAPI + yt-dlp 的 YouTube 视频下载工具，支持高质量视频下载、音频提取和缩略图保存。
+一个基于 FastAPI + Tailwind CSS 的在线媒体工具集合，提供视频下载、AI图像生成、文字卡片制作等功能。
 
-## 功能特性
+## 主要功能
 
-- 支持下载 YouTube 视频、Shorts 和播放列表
-- 自动提取并保存音频文件（m4a 格式，192kbps）
-- 自动生成视频缩略图
-- 按日期分类管理下载内容
+### YouTube下载器
+- 支持单个视频下载和批量下载
+- 自动提取音频和缩略图
+- 支持下载YouTube Shorts短视频
+- 按日期和用户分类管理下载内容
 - 实时显示下载进度
 - 支持视频预览和在线播放
-- 显示详细的视频信息（标题、作者、时长、文件大小等）
-- 支持分别下载视频、音频和缩略图
-- 仅显示最近一周的下载记录
+- 显示详细的视频信息（标题、作者、时长等）
+
+### AI文生图（开发中）
+- 通过文字描述生成图像
+- 支持多种艺术风格
+- 提供参数微调功能
+
+### 文字卡片生成（开发中）
+- 提供多种精美模板
+- 支持自定义样式
+- 一键生成分享图
 
 ## 技术栈
 
-- 后端：Python FastAPI
-- 视频处理：yt-dlp + FFmpeg
-- 数据库：SQLite + SQLAlchemy
-- 前端：HTML + Tailwind CSS + JavaScript
-- 模板引擎：Jinja2
+### 后端
+- Python FastAPI
+- SQLAlchemy + SQLite
+- yt-dlp
+- FFmpeg
+
+### 前端
+- Tailwind CSS
+- JavaScript
+- Video.js
+- Font Awesome
+
+### 模板引擎
+- Jinja2
 
 ## 系统要求
 
 - Python 3.8+
-- FFmpeg（用于视频处理和缩略图生成）
+- FFmpeg
 - 足够的磁盘空间用于存储下载的视频
 
 ## 安装步骤
@@ -33,93 +51,108 @@
 1. 克隆仓库：
 ```bash
 git clone [repository-url]
-cd youtube_downloader
+cd media-tools
 ```
 
-2. 安装 Python 依赖：
+2. 安装依赖：
 ```bash
 pip install -r requirements.txt
 ```
 
-3. 安装 FFmpeg：
-- macOS：
-```bash
-brew install ffmpeg
-```
-- Linux：
-```bash
-sudo apt-get install ffmpeg
-```
-- Windows：
-  - 下载 FFmpeg 并添加到系统环境变量
+3. 安装FFmpeg：
+- Windows: 下载并添加到系统环境变量
+- macOS: `brew install ffmpeg`
+- Linux: `sudo apt-get install ffmpeg`
 
 4. 创建必要的目录：
 ```bash
-mkdir -p static/thumbnails videos
+mkdir -p toolsfile/youtube/{videos,batch_videos}
+mkdir -p dbfile/youtube
+mkdir -p static/images
 ```
 
-## 使用方法
+## 目录结构
 
-1. 启动服务器：
+```
+media-tools/
+├── config/                 # 配置文件
+│   ├── settings.py        # 全局设置
+│   └── tools.py           # 工具配置
+├── core/                  # 核心模块
+│   └── database.py       # 数据库配置
+├── modules/              # 功能模块
+│   └── youtube/         # YouTube下载模块
+├── static/              # 静态文件
+│   ├── css/            # 样式文件
+│   └── images/         # 图片资源
+├── templates/           # HTML模板
+│   ├── common/         # 公共模板
+│   ├── home/           # 首页模板
+│   ├── navigation/     # 导航模板
+│   └── tools/          # 工具模板
+├── toolsfile/          # 下载文件存储
+│   └── youtube/        # YouTube视频存储
+├── dbfile/             # 数据库文件
+│   └── youtube/        # YouTube数据库
+├── main.py             # 主程序
+└── requirements.txt    # Python依赖
+```
+
+## 使用说明
+
+1. 启动服务：
 ```bash
 python main.py
 ```
-或者使用 uvicorn：
-```bash
-uvicorn main:app --reload
-```
 
-2. 打开浏览器访问：`http://localhost:8000`
+2. 访问地址：`http://localhost:8000`
 
-3. 在输入框中粘贴 YouTube 视频链接，点击"下载"按钮
+3. YouTube下载器使用：
+   - 单视频下载：输入视频URL，点击下载
+   - 批量下载：输入频道URL，自动下载最近3个月的短视频
+   - 下载历史：查看和管理已下载的视频
 
-4. 等待下载完成，下载的文件将按日期分类保存在 videos 目录中
-
-## 文件结构
+## 文件存储结构
 
 ```
-youtube_downloader/
-├── main.py              # 主程序文件
-├── database.py          # 数据库模型
-├── requirements.txt     # Python 依赖
-├── static/             # 静态文件目录
-│   ├── css/           # CSS 文件
-│   └── thumbnails/    # 视频缩略图
-├── templates/          # HTML 模板
-│   └── index.html     # 主页模板
-├── videos/            # 下载的视频文件
-│   └── YYYY-MM-DD/   # 按日期分类的视频目录
-└── youtube_downloader.log  # 日志文件
-```
-
-## 文件保存结构
-
-下载的文件按日期分类保存在 videos 目录下：
-```
-videos/
-└── YYYY-MM-DD/
-    ├── [video_id].mp4      # 视频文件
-    ├── [video_id].m4a      # 音频文件
-    ├── [video_id].info.json # 视频信息
-    └── thumbnails/
-        └── [video_id].jpg   # 缩略图
+toolsfile/
+└── youtube/
+    ├── videos/              # 单视频下载
+    │   └── YYYY-MM-DD/     # 按日期分类
+    │       ├── video_id.mp4
+    │       ├── video_id.m4a
+    │       └── thumbnails/
+    └── batch_videos/        # 批量下载
+        └── YYYY-MM-DD/     # 按日期分类
+            └── channel_id/  # 按频道分类
+                ├── video_id.mp4
+                ├── video_id.m4a
+                └── video_id.jpg
 ```
 
 ## 注意事项
 
-1. 确保系统已正确安装 FFmpeg，否则部分功能可能无法使用
-2. 下载视频前请确认有足够的磁盘空间
-3. 部分视频可能因版权限制无法下载
+1. 确保系统已正确安装FFmpeg
+2. 下载前检查磁盘空间是否充足
+3. 批量下载仅支持最近3个月的短视频
 4. 建议使用稳定的网络连接
-5. 默认只保存最近一周的下载记录显示
+5. 部分视频可能因版权限制无法下载
 
 ## 开发计划
 
-- [ ] 添加视频格式选择功能
-- [ ] 支持批量下载
-- [ ] 添加下载历史记录搜索功能
-- [ ] 添加视频标签分类功能
+- [ ] 完善AI文生图功能
+- [ ] 添加文字卡片生成器
 - [ ] 支持更多视频平台
+- [ ] 添加用户系统
+- [ ] 优化下载速度
+- [ ] 添加视频处理功能
+
+## 贡献指南
+
+1. Fork 项目
+2. 创建功能分支
+3. 提交更改
+4. 发起 Pull Request
 
 ## 许可证
 

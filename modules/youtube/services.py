@@ -134,14 +134,31 @@ async def download_video(url: str, db: Session):
         # 创建日期文件夹
         date_str = datetime.now().strftime('%Y-%m-%d')
         save_dir = os.path.join(VIDEOS_DIR, date_str)  # VIDEOS_DIR 是 toolsfile/youtube/videos
-        os.makedirs(os.path.join(save_dir, "thumbnails"), exist_ok=True)
+        thumbnails_dir = os.path.join(save_dir, "thumbnails")
+        os.makedirs(thumbnails_dir, exist_ok=True)
         
         # 复制基础配置并添加特定配置
         ydl_opts = YDL_OPTS.copy()
         ydl_opts.update({
             'outtmpl': os.path.join(save_dir, '%(id)s.%(ext)s'),
             'progress_hooks': [progress_hook],
-            'outtmpl_thumbnail': os.path.join(save_dir, 'thumbnails', '%(id)s.%(ext)s'),
+            'writethumbnail': True,  # 确保开启缩略图下载
+            'postprocessors': [
+                {
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                },
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'm4a',
+                    'preferredquality': '192',
+                },
+                {
+                    # 添加缩略图处理器
+                    'key': 'FFmpegThumbnailsConvertor',
+                    'format': 'jpg',
+                },
+            ],
         })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -151,6 +168,20 @@ async def download_video(url: str, db: Session):
             
             # 下载视频
             ydl.download([url])
+            
+            # 检查并处理缩略图
+            thumbnail_path = os.path.join(thumbnails_dir, f'{video_id}.jpg')
+            webp_path = os.path.join(save_dir, f'{video_id}.webp')
+            
+            # 如果存在webp格式的缩略图，转换为jpg
+            if os.path.exists(webp_path):
+                convert_thumbnail(webp_path, thumbnail_path)
+                # 删除webp文件
+                os.remove(webp_path)
+            # 如果没有缩略图，从视频中提取
+            elif not os.path.exists(thumbnail_path):
+                video_path = os.path.join(save_dir, f'{video_id}.mp4')
+                extract_thumbnail(video_path, thumbnail_path)
             
             # 构建数据库存储的路径（相对于VIDEOS_DIR的路径）
             relative_path = os.path.join(date_str, f'{video_id}.mp4')
@@ -164,9 +195,9 @@ async def download_video(url: str, db: Session):
                 duration=info.get('duration', 0),
                 description=info.get('description', '无描述'),
                 youtube_url=url,
-                file_path=os.path.join(VIDEOS_DIR, relative_path),  # 添加前缀路径
-                audio_path=os.path.join(VIDEOS_DIR, relative_audio_path),  # 添加前缀路径
-                thumbnail_path=os.path.join(VIDEOS_DIR, relative_thumbnail_path),  # 添加前缀路径
+                file_path=os.path.join('toolsfile/youtube/videos', relative_path),
+                audio_path=os.path.join('toolsfile/youtube/videos', relative_audio_path),
+                thumbnail_path=os.path.join('toolsfile/youtube/videos', relative_thumbnail_path),
                 file_size=os.path.getsize(os.path.join(save_dir, f'{video_id}.mp4')) / (1024 * 1024)  # MB
             )
             db.add(video)
