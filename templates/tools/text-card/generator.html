@@ -604,7 +604,7 @@ async function exportToImage(format) {
         `;
         document.body.appendChild(tempWrapper);
         
-        // 克隆预览内容
+        // 克隆预览内容（包含水印）
         const clonedContent = preview.cloneNode(true);
         
         // 复制所有计算后的样式
@@ -744,65 +744,7 @@ function updatePreview() {
     preview.innerHTML = '';
     preview.className = 'card-preview';
     
-    // 设置预览尺寸
-    if (customSizeCheckbox.checked && !isNaN(width) && !isNaN(height)) {
-        preview.style.width = `${width}px`;
-        preview.style.height = `${height}px`;
-        preview.style.minHeight = `${height}px`;  // 确保最小高度
-        previewContainer.style.minWidth = `${width + 80}px`;
-        previewContainer.style.minHeight = `${height + 80}px`;
-    }
-
-    // 创建内容并应用样式
-    // ... (其他内容创建代码保持不变)
-    
-    // 等待内容渲染完成后再获取实际尺寸
-    requestAnimationFrame(() => {
-        // 获取实际尺寸（包括内边距）
-        const computedStyle = window.getComputedStyle(preview);
-        const actualWidth = Math.round(preview.offsetWidth);
-        const actualHeight = Math.round(preview.offsetHeight);
-        
-        // 更新输入框显示的尺寸
-        const cardWidth = document.getElementById('card-width');
-        const cardHeight = document.getElementById('card-height');
-        
-        if (!customSizeCheckbox.checked) {
-            // 自动模式：显示实际尺寸
-            cardWidth.value = actualWidth;
-            cardHeight.value = actualHeight;
-        }
-        
-        // 更新预览容器尺寸
-        if (customSizeCheckbox.checked) {
-            // 自定义模式：使用输入的尺寸
-            const width = parseInt(cardWidth.value);
-            const height = parseInt(cardHeight.value);
-            preview.style.width = `${width}px`;
-            preview.style.height = `${height}px`;
-            previewContainer.style.minWidth = `${width + 80}px`;
-            previewContainer.style.minHeight = `${height + 80}px`;
-        } else {
-            // 自动模式：清除固定尺寸
-            preview.style.width = '';
-            preview.style.height = '';
-            previewContainer.style.minWidth = '';
-            previewContainer.style.minHeight = '300px';
-        }
-    });
-    
-    // 设置背景颜色和文字颜色
-    if (isCustomTemplate) {
-        preview.style.setProperty('--bg-color', bgColorInput.value);
-    } else {
-        preview.style.setProperty('--bg-color', selectedTemplate.dataset.bgColor);
-        bgColorInput.value = selectedTemplate.dataset.bgColor;
-    }
-    
-    // 设置文字颜色（对所有模板都生效）
-    document.documentElement.style.setProperty('--text-color', selectedTemplate.dataset.textColor);
-    
-    // 添加底座颜色
+    // 添加底座颜色（最底层）
     const baseColor = document.querySelector('.gradient-option.selected').dataset.gradient;
     if (baseColor !== 'none') {
         const baseColorElement = document.createElement('div');
@@ -810,14 +752,83 @@ function updatePreview() {
         preview.appendChild(baseColorElement);
     }
     
-    // 创建内容包装器
+    // 创建内容包装器（中间层）
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'content-wrapper';
+    preview.appendChild(contentWrapper);
     
-    // 创建内容容器
+    // 创建内容容器（背景层）
     const contentContainer = document.createElement('div');
     contentContainer.className = 'bg-template';
+    contentWrapper.appendChild(contentContainer);
     
+    // 创建水印容器（最上层，但在内容容器内）
+    const watermarkContainer = document.createElement('div');
+    watermarkContainer.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+    `;
+    contentContainer.appendChild(watermarkContainer);
+    
+    // 添加时间水印
+    const dateWatermark = document.createElement('div');
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    dateWatermark.style.cssText = `
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.3);
+        z-index: 20;
+    `;
+    dateWatermark.textContent = dateStr;
+    watermarkContainer.appendChild(dateWatermark);
+    
+    // 添加版权水印
+    const copyrightWatermark = document.createElement('div');
+    copyrightWatermark.style.cssText = `
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.3);
+        z-index: 20;
+    `;
+    copyrightWatermark.textContent = '@Generate By MEDIAS.AI';
+    watermarkContainer.appendChild(copyrightWatermark);
+    
+    // 添加字数统计水印
+    const textContent = document.getElementById('text-input').value;
+    const wordCount = textContent.replace(/\s/g, '').length;
+    const wordCountWatermark = document.createElement('div');
+    wordCountWatermark.style.cssText = `
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.3);
+        z-index: 20;
+    `;
+    wordCountWatermark.textContent = `字数：${wordCount}`;
+    watermarkContainer.appendChild(wordCountWatermark);
+
+    // 设置预览尺寸
+    if (customSizeCheckbox.checked && !isNaN(width) && !isNaN(height)) {
+        preview.style.width = `${width}px`;
+        preview.style.height = `${height}px`;
+        preview.style.minHeight = `${height}px`;
+        previewContainer.style.minWidth = `${width + 80}px`;
+        previewContainer.style.minHeight = `${height + 80}px`;
+    }
+
+    // 添加实际内容
     const text = document.getElementById('text-input').value;
     const cards = splitLongText(text);
 
@@ -834,6 +845,17 @@ function updatePreview() {
         contentContainer.appendChild(cardElement);
     });
 
+    // 设置背景颜色和文字颜色
+    if (isCustomTemplate) {
+        preview.style.setProperty('--bg-color', bgColorInput.value);
+    } else {
+        preview.style.setProperty('--bg-color', selectedTemplate.dataset.bgColor);
+        bgColorInput.value = selectedTemplate.dataset.bgColor;
+    }
+    
+    // 设置文字颜色（对所有模板都生效）
+    document.documentElement.style.setProperty('--text-color', selectedTemplate.dataset.textColor);
+    
     // 将内容容器添加到包装器
     contentWrapper.appendChild(contentContainer);
 
