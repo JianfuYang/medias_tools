@@ -18,6 +18,7 @@ import base64
 from modules.image_compress import router as compress_router
 from modules.image_resize import router as resize_router
 from modules.image_format import router as format_router
+from modules.svg_editor.routes import router as svg_editor_router
 
 # 配置日志
 logging.basicConfig(
@@ -87,6 +88,13 @@ app.include_router(
     tags=["image"]
 )
 
+# 注册SVG编辑器模块路由
+app.include_router(
+    svg_editor_router,
+    prefix="/tools/svg-editor",
+    tags=["svg"]
+)
+
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
 async def tool_page(request: Request, tool_id: str):
@@ -100,7 +108,7 @@ async def tool_page(request: Request, tool_id: str):
         )
     
     # 如果是已完成的工具，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format']:
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面

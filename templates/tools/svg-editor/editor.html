@@ -1,0 +1,503 @@
+{% extends "common/base.html" %}
+
+{% block title %}SVG编辑器 - 媒体效率工具库{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- 引入 CodeMirror 主题和插件 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/lint.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchtags.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/lint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.8.4/standalone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.8.4/parser-html.js"></script>
+<!-- 引入 FileSaver.js 用于文件下载 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- 引入 canvas-toBlob polyfill -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/javascript-canvas-to-blob/3.29.0/js/canvas-to-blob.min.js"></script>
+<style>
+.editor-container {
+    min-height: 500px;
+}
+
+.preview-container {
+    min-height: 300px;
+    background: #f8fafc;
+    background-image: linear-gradient(45deg, #eee 25%, transparent 25%),
+                      linear-gradient(-45deg, #eee 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #eee 75%),
+                      linear-gradient(-45deg, transparent 75%, #eee 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.CodeMirror {
+    height: 500px;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+}
+
+.error-marker {
+    color: #ef4444;
+    margin-left: 5px;
+}
+
+.CodeMirror-lint-tooltip {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 0.375rem;
+    color: #f3f4f6;
+    padding: 8px 12px;
+    font-size: 12px;
+    z-index: 100;
+}
+
+/* 添加导出按钮的加载状态样式 */
+.export-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.export-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    top: 50%;
+    left: 50%;
+    margin: -0.5rem 0 0 -0.5rem;
+    border: 2px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+    to {transform: rotate(360deg);}
+}
+
+.code-editor {
+    background-color: #F8F9FA;  /* 柔和的浅灰色背景 */
+    border: 1px solid #E9ECEF;  /* 柔和的边框色 */
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #2D3748;  /* 深灰色文字 */
+    width: 100%;
+    min-height: 300px;
+    resize: vertical;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.code-editor:focus {
+    outline: none;
+    border-color: #CBD5E0;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* 如果使用的是 textarea */
+.code-editor::placeholder {
+    color: #A0AEC0;
+}
+
+/* 如果是使用 Monaco Editor，可以添加以下自定义主题 */
+.monaco-editor {
+    background-color: #F8F9FA !important;
+}
+
+.monaco-editor .margin {
+    background-color: #F8F9FA !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- 标题区域 -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">SVG编辑器</h1>
+        <p class="mt-2 text-sm text-gray-600">
+            使用我们的SVG编辑器，您可以轻松地创建和编辑SVG图形。输入SVG代码，预览效果，然后下载为SVG、PNG或JPG格式。
+        </p>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- 左侧编辑器 -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-medium text-gray-900">编辑SVG代码</h2>
+                <div class="flex space-x-2">
+                    <button id="format-btn" class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+                        </svg>
+                        格式化
+                    </button>
+                    <button id="clear-btn" class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        清空
+                    </button>
+                </div>
+            </div>
+            <textarea id="svg-editor" class="w-full code-editor"></textarea>
+        </div>
+
+        <!-- 右侧预览和导出 -->
+        <div class="space-y-8">
+            <!-- 预览区域 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">预览</h2>
+                <div id="preview" class="preview-container flex items-center justify-center rounded-lg border border-gray-200">
+                    <div class="text-gray-400 text-center">
+                        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <p>SVG预览将显示在这里</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导出选项 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">导出</h2>
+                <div class="grid grid-cols-3 gap-4">
+                    <button id="download-svg" class="export-btn inline-flex flex-col items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:text-blue-500 transition-colors">
+                        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span class="text-sm font-medium">SVG</span>
+                    </button>
+                    <button id="download-png" class="export-btn inline-flex flex-col items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:text-blue-500 transition-colors">
+                        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-sm font-medium">PNG</span>
+                    </button>
+                    <button id="download-jpg" class="export-btn inline-flex flex-col items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:text-blue-500 transition-colors">
+                        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-sm font-medium">JPG</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// SVG代码验证函数
+function validateSvg(code) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(code, "image/svg+xml");
+        const errors = doc.getElementsByTagName("parsererror");
+        if (errors.length > 0) {
+            return {
+                valid: false,
+                error: errors[0].textContent
+            };
+        }
+        return { valid: true };
+    } catch (e) {
+        return {
+            valid: false,
+            error: e.message
+        };
+    }
+}
+
+// 自定义lint函数
+CodeMirror.registerHelper("lint", "xml", function(text) {
+    const validation = validateSvg(text);
+    if (!validation.valid) {
+        return [{
+            from: CodeMirror.Pos(0, 0),
+            to: CodeMirror.Pos(0, text.length),
+            message: validation.error,
+            severity: "error"
+        }];
+    }
+    return [];
+});
+
+// 初始化CodeMirror编辑器
+let editor = CodeMirror.fromTextArea(document.getElementById("svg-editor"), {
+    mode: { name: "xml", htmlMode: true },
+    theme: "dracula",
+    lineNumbers: true,
+    autoCloseTags: true,
+    matchBrackets: true,
+    matchTags: true,
+    indentUnit: 2,
+    tabSize: 2,
+    lineWrapping: true,
+    extraKeys: {
+        "Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); },
+        "Ctrl-Space": "autocomplete",
+        "Alt-F": function(cm) { formatCode(); }
+    },
+    foldGutter: true,
+    gutters: ["CodeMirror-lint-markers", "CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+    lint: true,
+    autoCloseBrackets: true,
+    styleActiveLine: true,
+    hintOptions: {
+        schemaInfo: {
+            "svg": ["width", "height", "viewBox", "xmlns"],
+            "circle": ["cx", "cy", "r", "fill", "stroke"],
+            "rect": ["x", "y", "width", "height", "fill", "stroke"],
+            "path": ["d", "fill", "stroke"]
+        }
+    }
+});
+
+// 示例SVG代码
+const exampleSvg = `<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="80" fill="#4F46E5"/>
+  <rect x="60" y="60" width="80" height="80" fill="#ffffff"/>
+</svg>`;
+
+// 设置初始内容
+editor.setValue(exampleSvg);
+
+// 实时预览
+editor.on("change", function() {
+    updatePreview();
+});
+
+// 更新预览
+function updatePreview() {
+    const svgCode = editor.getValue();
+    const validation = validateSvg(svgCode);
+    const preview = document.getElementById("preview");
+    if (validation.valid) {
+        preview.innerHTML = svgCode;
+    } else {
+        preview.innerHTML = `
+            <div class="text-red-500 text-center">
+                <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p>SVG代码无效</p>
+            </div>
+        `;
+    }
+}
+
+// 初始预览
+updatePreview();
+
+// 添加下载按钮事件监听
+document.getElementById("download-svg").addEventListener("click", downloadSvg);
+document.getElementById("download-png").addEventListener("click", () => downloadImage("png"));
+document.getElementById("download-jpg").addEventListener("click", () => downloadImage("jpeg"));
+
+// 格式化代码
+function formatCode() {
+    try {
+        const code = editor.getValue();
+        const formatted = prettier.format(code, {
+            parser: "html",
+            plugins: prettierPlugins,
+            printWidth: 80,
+            tabWidth: 2,
+            useTabs: false,
+            semi: true,
+            singleQuote: false,
+            bracketSpacing: true
+        });
+        editor.setValue(formatted);
+    } catch (e) {
+        console.error("格式化失败:", e);
+        alert("SVG代码格式化失败，请检查代码是否有效");
+    }
+}
+
+document.getElementById("format-btn").addEventListener("click", formatCode);
+
+// 清空编辑器
+document.getElementById("clear-btn").addEventListener("click", function() {
+    if(confirm("确定要清空编辑器吗？")) {
+        editor.setValue("");
+    }
+});
+
+// 工具函数：设置按钮加载状态
+function setButtonLoading(button, isLoading) {
+    if (!button) {
+        console.error('按钮元素不存在');
+        return;
+    }
+
+    if (isLoading) {
+        button.classList.add('loading');
+        button.disabled = true;
+    } else {
+        button.classList.remove('loading');
+        button.disabled = false;
+    }
+}
+
+// 工具函数：显示错误提示
+function showError(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50';
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s ease-out';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+// 下载SVG文件
+function downloadSvg() {
+    const button = document.getElementById('download-svg');
+    setButtonLoading(button, true);
+
+    try {
+        const svgCode = editor.getValue();
+        const validation = validateSvg(svgCode);
+        if (!validation.valid) {
+            showError('SVG代码无效，请检查后重试');
+            return;
+        }
+
+        const blob = new Blob([svgCode], { type: "image/svg+xml" });
+        saveAs(blob, "image.svg");
+    } catch (error) {
+        showError('导出SVG失败：' + error.message);
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
+// 下载PNG/JPG
+function downloadImage(format) {
+    // 修正jpeg格式的按钮ID
+    const buttonId = format === 'jpeg' ? 'download-jpg' : `download-${format}`;
+    const button = document.getElementById(buttonId);
+    
+    if (!button) {
+        showError(`找不到${format.toUpperCase()}下载按钮`);
+        return;
+    }
+
+    setButtonLoading(button, true);
+
+    const svgCode = editor.getValue();
+    // 验证SVG代码
+    const validation = validateSvg(svgCode);
+    if (!validation.valid) {
+        showError('SVG代码无效，请检查后重试');
+        setButtonLoading(button, false);
+        return;
+    }
+
+    // 从预览区域获取SVG元素
+    const svg = document.getElementById("preview").querySelector("svg");
+    if (!svg) {
+        showError('无法获取SVG元素，请检查代码是否正确');
+        setButtonLoading(button, false);
+        return;
+    }
+
+    // 处理SVG代码，确保正确编码
+    let processedSvgCode = svgCode
+        .replace(/[\n\r]+/g, ' ') // 移除换行
+        .replace(/\s+/g, ' ')     // 合并空格
+        .trim();                  // 移除首尾空格
+    
+    // 设置canvas尺寸
+    let svgWidth = 200;
+    let svgHeight = 200;
+    
+    // 尝试获取SVG尺寸
+    try {
+        svgWidth = svg.width.baseVal.value || parseInt(svg.getAttribute("width")) || 200;
+        svgHeight = svg.height.baseVal.value || parseInt(svg.getAttribute("height")) || 200;
+    } catch (e) {
+        console.warn('无法获取SVG尺寸，使用默认值200x200');
+    }
+    
+    // 根据设备像素比调整尺寸以获得更清晰的图像
+    const scale = window.devicePixelRatio || 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = svgWidth * scale;
+    canvas.height = svgHeight * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    
+    // 设置白色背景（针对JPG格式）
+    if (format === 'jpeg') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    
+    img.onload = function() {
+        try {
+            ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+            canvas.toBlob(function(blob) {
+                if (!blob) {
+                    showError(`导出${format.toUpperCase()}失败，转换过程出错`);
+                    setButtonLoading(button, false);
+                    return;
+                }
+                // 修正文件扩展名
+                const extension = format === 'jpeg' ? 'jpg' : format;
+                saveAs(blob, `image.${extension}`);
+                setButtonLoading(button, false);
+            }, `image/${format}`, format === 'jpeg' ? 0.95 : 1);
+        } catch (error) {
+            showError('图片绘制失败：' + error.message);
+            setButtonLoading(button, false);
+        }
+    };
+    
+    img.onerror = function() {
+        showError(`导出${format.toUpperCase()}失败，请检查SVG代码是否有效`);
+        setButtonLoading(button, false);
+    };
+    
+    try {
+        // 使用encodeURIComponent确保SVG代码被正确编码
+        const svgBlob = new Blob([processedSvgCode], {type: 'image/svg+xml'});
+        img.src = URL.createObjectURL(svgBlob);
+        // 保存URL以便清理
+        if (!window._createdUrls) window._createdUrls = [];
+        window._createdUrls.push(img.src);
+    } catch (error) {
+        showError('SVG编码失败：' + error.message);
+        setButtonLoading(button, false);
+    }
+}
+
+// 添加销毁函数，清理资源
+window.addEventListener('beforeunload', function() {
+    // 清理所有创建的Object URL
+    if (window._createdUrls) {
+        window._createdUrls.forEach(url => {
+            URL.revokeObjectURL(url);
+        });
+        window._createdUrls = [];
+    }
+});
+</script>
+{% endblock %}
