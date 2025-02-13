@@ -112,6 +112,7 @@ media-tools/
 │   ├── youtube/        # YouTube下载
 │   ├── image_compress/ # 图片压缩
 │   ├── chatgpt/       # AI对话
+│   ├── text_card/     # 文字卡片
 │   └── utils/         # 通用工具
 ├── static/             # 静态资源
 ├── templates/          # 模板文件
