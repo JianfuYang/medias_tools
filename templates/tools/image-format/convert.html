@@ -1,0 +1,621 @@
+{% extends "common/base.html" %}
+
+{% block title %}格式转换 - 媒体效率工具库{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+.drag-area {
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.drag-area.dragover {
+    border-color: #3b82f6;
+    background-color: #f8fafc;
+}
+
+.format-option {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.format-option:hover {
+    background-color: #f3f4f6;
+}
+
+.format-option.selected {
+    background-color: #ebf5ff;
+    border-color: #3b82f6;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <!-- 标题区域 -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">格式转换</h1>
+        <p class="mt-2 text-sm text-gray-600">
+            支持JPG、PNG、WEBP等常见格式之间的转换，完全本地处理无需上传
+        </p>
+    </div>
+
+    <!-- 上传和设置区域 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <!-- 上传区域 -->
+        <div class="md:col-span-2">
+            <div id="upload-area" class="drag-area bg-white p-8 text-center h-full">
+                <div class="flex flex-col items-center justify-center">
+                    <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-gray-600 mb-2">拖放图片到这里，或者</p>
+                    <label class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                        <span>选择文件</span>
+                        <input type="file" id="file-input" class="hidden" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+                    </label>
+                    <p class="mt-2 text-xs text-gray-500">支持JPG、PNG、WEBP、GIF格式，单个文件最大15MB</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 转换设置区域 -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">转换设置</h3>
+            <!-- 格式选择 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">目标格式</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="format-option selected p-3 rounded-lg border-2 border-gray-200 text-center" data-format="jpeg">
+                        <span class="text-sm font-medium">JPG</span>
+                    </div>
+                    <div class="format-option p-3 rounded-lg border-2 border-gray-200 text-center" data-format="png">
+                        <span class="text-sm font-medium">PNG</span>
+                    </div>
+                    <div class="format-option p-3 rounded-lg border-2 border-gray-200 text-center" data-format="webp">
+                        <span class="text-sm font-medium">WEBP</span>
+                    </div>
+                    <div class="format-option p-3 rounded-lg border-2 border-gray-200 text-center" data-format="gif">
+                        <span class="text-sm font-medium">GIF</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 质量设置 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    输出质量 <span id="quality-value">90%</span>
+                </label>
+                <input type="range" id="quality-slider" class="w-full" min="1" max="100" value="90">
+            </div>
+
+            <!-- 转换按钮 -->
+            <button id="convert-btn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" disabled>
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                开始转换
+            </button>
+        </div>
+    </div>
+
+    <!-- 转换进度 -->
+    <div id="progress-container" class="hidden bg-white p-6 rounded-lg shadow-sm mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-gray-900">转换进度</h3>
+            <span id="progress-text" class="text-sm text-gray-500">0/0</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- 转换结果列表 -->
+    <div id="results-container" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">转换结果</h3>
+            <button id="download-all-btn" 
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    disabled
+                    onclick="handleDownloadAll(event)"
+                    title="下载所有转换完成的文件">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                下载全部
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-8">
+            <!-- 原始文件列表 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h4 class="text-sm font-medium text-gray-900 mb-4">转换素材</h4>
+                <div id="original-list" class="space-y-4">
+                    <!-- 原始文件项将动态添加到这里 -->
+                </div>
+            </div>
+            
+            <!-- 转换后文件列表 -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h4 class="text-sm font-medium text-gray-900 mb-4">转换结果</h4>
+                <div id="converted-list" class="space-y-4">
+                    <!-- 转换后文件项将动态添加到这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 全局变量
+let originalImage = null;
+let currentFormat = 'jpeg';
+let convertedFiles = new Map(); // 存储转换后的文件
+let totalFiles = 0;
+let convertedCount = 0;
+let selectedFiles = []; // 存储待转换的文件
+let isConverting = false; // 转换状态标记
+
+// 初始化事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    // 文件上传处理
+    const fileInput = document.getElementById('file-input');
+    fileInput.addEventListener('change', handleFilesSelect);
+
+    // 拖放处理
+    const uploadArea = document.getElementById('upload-area');
+    uploadArea.addEventListener('dragover', handleDragOver);
+    uploadArea.addEventListener('dragleave', handleDragLeave);
+    uploadArea.addEventListener('drop', handleDrop);
+
+    // 格式选择处理
+    document.querySelectorAll('.format-option').forEach(option => {
+        option.addEventListener('click', function() {
+            // 如果正在转换中，不允许切换格式
+            if(isConverting) return;
+            
+            document.querySelectorAll('.format-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            this.classList.add('selected');
+            currentFormat = this.dataset.format;
+            
+            // 重置转换结果区域
+            if(selectedFiles.length > 0) {
+                resetConvertedList();
+                // 重新启用转换按钮
+                const convertBtn = document.getElementById('convert-btn');
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    开始转换
+                `;
+            }
+        });
+    });
+});
+
+// 批量文件选择处理
+function handleFilesSelect(e) {
+    const files = Array.from(e.target.files);
+    if(files.length > 0) {
+        processFiles(files);
+    }
+}
+
+// 拖放处理
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if(files.length > 0) {
+        processFiles(files);
+    }
+}
+
+// 图片处理
+function processFiles(files) {
+    // 重置进度
+    totalFiles = files.length;
+    convertedCount = 0;
+    selectedFiles = Array.from(files);
+    
+    // 显示进度和列表区域
+    document.getElementById('progress-container').classList.remove('hidden');
+    document.getElementById('results-container').classList.remove('hidden');
+    
+    // 清空文件列表
+    const originalList = document.getElementById('original-list');
+    const convertedList = document.getElementById('converted-list');
+    originalList.innerHTML = '';
+    convertedList.innerHTML = '';
+    convertedFiles.clear();
+    
+    // 处理每个文件
+    for(const file of files) {
+        if(validateFile(file)) {
+            addFileToList(file); // 只添加到列表，不立即转换
+        }
+    }
+    
+    // 启用转换按钮
+    document.getElementById('convert-btn').disabled = false;
+}
+
+// 文件验证
+function validateFile(file) {
+    // 检查文件类型
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if(!validTypes.includes(file.type)) {
+        showModal(`文件格式不支持`, `文件 "${file.name}" 格式不支持，请上传JPG、PNG、WEBP或GIF格式的图片。`);
+        return false;
+    }
+    
+    // 检查文件大小 (15MB)
+    if(file.size > 15 * 1024 * 1024) {
+        showModal(`文件过大`, `文件 "${file.name}" 超过15MB限制，请压缩后再试。`);
+        return false;
+    }
+    
+    return true;
+}
+
+// 添加文件到列表
+function addFileToList(file) {
+    // 添加到原始文件列表
+    const originalItem = document.createElement('div');
+    originalItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded';
+    originalItem.innerHTML = `
+        <div class="flex items-center">
+            <img src="${URL.createObjectURL(file)}" class="w-12 h-12 object-cover rounded" alt="${file.name}">
+            <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900 max-w-[200px] truncate" title="${file.name}">${file.name}</p>
+                <p class="text-xs text-gray-500">${formatSize(file.size)}</p>
+            </div>
+        </div>
+    `;
+    document.getElementById('original-list').appendChild(originalItem);
+
+    // 添加到转换后列表(初始状态)
+    const convertedItem = document.createElement('div');
+    convertedItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded';
+    const newFileName = `${file.name.split('.')[0]}.${currentFormat}`;
+    convertedItem.innerHTML = `
+        <div class="flex items-center">
+            <div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900 max-w-[200px] truncate" title="${newFileName}">${newFileName}</p>
+                <p class="text-xs text-gray-500">等待转换...</p>
+            </div>
+        </div>
+        <button class="download-btn px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled onclick="handleDownload(event, '${file.name}')" title="点击下载">
+            下载
+        </button>
+    `;
+    document.getElementById('converted-list').appendChild(convertedItem);
+}
+
+// 显示模态框
+function showModal(title, message) {
+    // 创建遮罩层
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    // 创建模态框
+    const modal = document.createElement('div');
+    modal.className = 'bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl transform transition-all';
+    modal.innerHTML = `
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-gray-900">${title}</h3>
+            <button class="text-gray-400 hover:text-gray-500" onclick="this.closest('.fixed').remove()">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="mb-6">
+            <p class="text-sm text-gray-500">${message}</p>
+        </div>
+        <div class="flex justify-end">
+            <button class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    onclick="this.closest('.fixed').remove()">
+                确定
+            </button>
+        </div>
+    `;
+    
+    // 添加到页面
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // 点击遮罩层关闭
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    });
+    
+    // ESC键关闭
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            overlay.remove();
+        }
+    }, { once: true });
+}
+
+// 处理下载全部点击
+function handleDownloadAll(event) {
+    event.preventDefault();
+    if (isConverting) {
+        showModal('提示', '正在转换中，请等待转换完成');
+        return;
+    }
+    if (convertedCount !== totalFiles) {
+        showModal('提示', '请等待所有文件转换完成后再下载');
+        return;
+    }
+    if (convertedFiles.size === 0) {
+        showModal('提示', '没有可下载的文件，请先进行转换');
+        return;
+    }
+    // 添加下载延迟,避免浏览器限制
+    let delay = 0;
+    convertedFiles.forEach((data, fileName) => {
+        setTimeout(() => {
+            downloadImage(data.dataUrl, fileName);
+        }, delay);
+        delay += 100; // 每个下载间隔100ms
+    });
+}
+
+// 处理下载点击
+function handleDownload(event, fileName) {
+    event.preventDefault();
+    if (isConverting) {
+        showModal('提示', '正在转换中，请等待转换完成');
+        return;
+    }
+    const convertedFile = convertedFiles.get(fileName);
+    if (!convertedFile) {
+        showModal('提示', '该文件尚未转换，请先进行转换');
+        return;
+    }
+    downloadImage(convertedFile.dataUrl, fileName);
+}
+
+// 更新进度
+function updateProgress() {
+    const progress = (convertedCount / totalFiles) * 100;
+    document.getElementById('progress-bar').style.width = `${progress}%`;
+    document.getElementById('progress-text').textContent = `${convertedCount}/${totalFiles}`;
+    
+    // 更新下载全部按钮状态
+    const downloadAllBtn = document.getElementById('download-all-btn');
+    downloadAllBtn.disabled = convertedCount !== totalFiles;
+    downloadAllBtn.title = convertedCount === totalFiles ? 
+        '下载所有转换完成的文件' : 
+        '请等待所有文件转换完成后下载';
+}
+
+// 图片格式转换
+function convertImage(file, img, quality) {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    // 转换格式
+    const convertedDataUrl = canvas.toDataURL(`image/${currentFormat}`, quality);
+    
+    // 存储转换后的文件
+    convertedFiles.set(file.name, {
+        dataUrl: convertedDataUrl,
+        format: currentFormat
+    });
+    
+    // 更新转换后的预览
+    updateConvertedItem(file, convertedDataUrl, convertedCount);
+}
+
+// 下载处理
+function downloadImage(dataUrl, originalName) {
+    const link = document.createElement('a');
+    const newName = originalName.split('.')[0] + '.' + currentFormat;
+    link.download = newName;
+    link.href = dataUrl;
+    link.click();
+}
+
+// 工具函数
+function formatSize(bytes) {
+    if(bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 flex items-center';
+    errorDiv.innerHTML = `
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(errorDiv);
+    // 添加淡出动画
+    setTimeout(() => errorDiv.style.opacity = '0', 2500);
+    setTimeout(() => errorDiv.style.transition = 'opacity 0.5s ease-out', 2000);
+    setTimeout(() => errorDiv.remove(), 3000);
+}
+
+// 质量滑块
+const qualitySlider = document.getElementById('quality-slider');
+const qualityValue = document.getElementById('quality-value');
+qualitySlider.addEventListener('input', function() {
+    qualityValue.textContent = this.value + '%';
+});
+
+// 转换按钮点击事件
+document.getElementById('convert-btn').addEventListener('click', async function() {
+    isConverting = true;
+    // 禁用按钮，显示转换中状态
+    this.disabled = true;
+    this.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        转换中...
+    `;
+    
+    // 禁用格式选择
+    document.querySelectorAll('.format-option').forEach(opt => {
+        opt.style.pointerEvents = 'none';
+        opt.style.opacity = '0.5';
+    });
+    
+    const quality = parseInt(qualitySlider.value) / 100;
+    // 逐个处理文件
+    for(const file of selectedFiles) {
+        await processFile(file, quality);
+    }
+    
+    isConverting = false;
+    // 恢复格式选择
+    document.querySelectorAll('.format-option').forEach(opt => {
+        opt.style.pointerEvents = 'auto';
+        opt.style.opacity = '1';
+    });
+    
+    // 恢复按钮状态
+    this.disabled = true; // 保持禁用状态直到新文件上传或更改格式
+    this.innerHTML = `
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        转换完成
+    `;
+});
+
+// 处理单个文件
+async function processFile(file, quality) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // 转换图片
+                convertImage(file, img, quality);
+                // 更新进度
+                convertedCount++;
+                updateProgress();
+                resolve();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 修改转换完成后的更新函数
+function updateConvertedItem(file, dataUrl, index) {
+    const convertedItems = document.querySelectorAll('#converted-list > div');
+    const convertedItem = convertedItems[index];
+    
+    // 替换占位图为实际预览图
+    const placeholder = convertedItem.querySelector('.w-12.h-12.bg-gray-200');
+    const imgContainer = convertedItem.querySelector('.flex.items-center');
+    
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.className = 'w-12 h-12 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity';
+    img.title = '点击下载';
+    img.onclick = (e) => handleDownload(e, file.name);
+    
+    if (placeholder) {
+        imgContainer.replaceChild(img, placeholder);
+    }
+    
+    // 更新文件大小信息
+    const sizeText = convertedItem.querySelector('.text-xs.text-gray-500');
+    const convertedSize = Math.round(dataUrl.length * 3/4);
+    sizeText.textContent = formatSize(convertedSize);
+    
+    // 启用下载按钮
+    const downloadBtn = convertedItem.querySelector('.download-btn');
+    downloadBtn.disabled = false;
+    downloadBtn.classList.add('hover:bg-blue-50', 'hover:border-blue-300', 'transition-colors');
+}
+
+// 重置转换结果列表
+function resetConvertedList() {
+    // 重置进度
+    convertedCount = 0;
+    updateProgress();
+    
+    // 清空转换结果
+    convertedFiles.clear();
+    
+    // 重置转换后列表的显示状态
+    const convertedList = document.getElementById('converted-list');
+    Array.from(convertedList.children).forEach((item, index) => {
+        const file = selectedFiles[index];
+        const newFileName = `${file.name.split('.')[0]}.${currentFormat}`;
+        item.innerHTML = `
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-900 max-w-[200px] truncate" title="${newFileName}">${newFileName}</p>
+                    <p class="text-xs text-gray-500">等待转换...</p>
+                </div>
+            </div>
+            <button class="download-btn px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled onclick="handleDownload(event, '${file.name}')" title="点击下载">
+                下载
+            </button>
+        `;
+    });
+    
+    // 禁用下载全部按钮
+    const downloadAllBtn = document.getElementById('download-all-btn');
+    downloadAllBtn.disabled = true;
+    downloadAllBtn.title = '请等待转换完成后下载';
+}
+</script>
+{% endblock %} 

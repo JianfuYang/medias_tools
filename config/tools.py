@@ -5,7 +5,7 @@ TOOLS_CONFIG = {
         'progress': 100
     },
     'image-resize': {
-        'name': '图片调整大小',
+        'name': '调整大小',
         'features': [
             {
                 'title': '本地处理',
@@ -94,42 +94,6 @@ TOOLS_CONFIG = {
         ],
         'progress': 15
     },
-    'image-resize': {
-        'name': '调整大小',
-        'features': [
-            {
-                'title': '本地处理',
-                'desc': '浏览器中直接处理，无需上传'
-            },
-            {
-                'title': '实时预览',
-                'desc': '即时查看调整效果'
-            },
-            {
-                'title': '保持比例',
-                'desc': '智能锁定宽高比例'
-            }
-        ],
-        'progress': 100
-    },
-    'convert': {
-        'name': '格式转换',
-        'features': [
-            {
-                'title': '多格式支持',
-                'desc': '支持常见图片格式间的相互转换'
-            },
-            {
-                'title': '参数调整',
-                'desc': '可设置转换参数，优化输出效果'
-            },
-            {
-                'title': '批量转换',
-                'desc': '支持批量转换不同格式图片'
-            }
-        ],
-        'progress': 25
-    },
     'svg-editor': {
         'name': 'SVG编辑器',
         'features': [
@@ -183,5 +147,23 @@ TOOLS_CONFIG = {
             }
         ],
         'progress': 20
+    },
+    'image-format': {
+        'name': '格式转换',
+        'features': [
+            {
+                'title': '本地处理',
+                'desc': '浏览器中直接处理，无需上传'
+            },
+            {
+                'title': '多格式支持',
+                'desc': '支持JPG、PNG、WEBP、GIF等格式'
+            },
+            {
+                'title': '批量转换',
+                'desc': '支持多个文件同时转换'
+            }
+        ],
+        'progress': 100
     }
 } 

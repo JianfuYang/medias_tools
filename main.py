@@ -15,8 +15,9 @@ from core.database import init_db
 from PIL import Image
 import io
 import base64
-from modules.image_compress.routes import router as image_compress_router
-from modules.image_resize.routes import router as image_resize_router
+from modules.image_compress import router as compress_router
+from modules.image_resize import router as resize_router
+from modules.image_format import router as format_router
 
 # 配置日志
 logging.basicConfig(
@@ -67,16 +68,23 @@ app.include_router(chatgpt_router, prefix="/tools/chatgpt", tags=["chatgpt"])
 
 # 注册图片压缩模块路由
 app.include_router(
-    image_compress_router, 
+    compress_router, 
     prefix="/tools/image-compress",
-    tags=["image_compress"]
+    tags=["image"]
 )
 
 # 注册图片调整大小模块路由
 app.include_router(
-    image_resize_router,
+    resize_router,
     prefix="/tools/image-resize",
-    tags=["resize"]
+    tags=["image"]
+)
+
+# 注册图片格式转换模块路由
+app.include_router(
+    format_router,
+    prefix="/tools/image-format",
+    tags=["image"]
 )
 
 # 工具路由 - 处理其他工具的待开发页面
@@ -92,7 +100,7 @@ async def tool_page(request: Request, tool_id: str):
         )
     
     # 如果是已完成的工具，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress']:
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面
