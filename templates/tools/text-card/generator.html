@@ -289,6 +289,19 @@ body {
     overflow: auto;
     min-height: 300px;
 }
+
+/* 预加载字体 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+
+/* 定义字体回退方案 */
+.card-content {
+    font-feature-settings: "liga" 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
 </style>
 {% endblock %}
 
@@ -422,22 +435,36 @@ body {
                     </div>
 
                     <!-- 字体设置 -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="input-label">字体</label>
-                            <select id="font-family" class="w-full border border-gray-300 rounded-lg p-2">
-                                <option value="Noto Sans SC">思源黑体</option>
-                                <option value="微软雅黑">微软雅黑</option>
-                                <option value="宋体">宋体</option>
-                                <option value="楷体">楷体</option>
-                                <option value="黑体">黑体</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="input-label">字体大小</label>
-                            <input type="number" id="font-size" value="16" min="12" max="72" 
-                                class="w-full border border-gray-300 rounded-lg p-2">
-                        </div>
+                    <div>
+                        <label class="input-label">字体选择</label>
+                        <select id="font-family" class="w-full border border-gray-300 rounded-lg p-2">
+                            <!-- 无衬线字体 -->
+                            <optgroup label="无衬线字体">
+                                <option value="system-ui, -apple-system">系统默认</option>
+                                <option value="'PingFang SC', 'Microsoft YaHei'">苹方 / 微软雅黑</option>
+                                <option value="'Noto Sans SC'">思源黑体</option>
+                                <option value="'Helvetica Neue', Arial">Helvetica</option>
+                            </optgroup>
+                            <!-- 衬线字体 -->
+                            <optgroup label="衬线字体">
+                                <option value="'SimSun', serif">宋体</option>
+                                <option value="'SimKai', serif">楷体</option>
+                                <option value="'SimHei', sans-serif">黑体</option>
+                                <option value="'FangSong', serif">仿宋</option>
+                            </optgroup>
+                            <!-- 特殊字体 -->
+                            <optgroup label="特殊字体">
+                                <option value="'LXGW WenKai'">霞鹜文楷</option>
+                                <option value="'Zhi Mang Xing'">智慧体</option>
+                                <option value="'Ma Shan Zheng'">马善政体</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="input-label">字体大小</label>
+                        <input type="number" id="font-size" value="16" min="12" max="72" 
+                            class="w-full border border-gray-300 rounded-lg p-2">
                     </div>
 
                     <!-- 其他设置 -->
@@ -739,10 +766,39 @@ function updatePreview() {
     const customSizeCheckbox = document.getElementById('custom-size');
     const width = parseInt(document.getElementById('card-width').value);
     const height = parseInt(document.getElementById('card-height').value);
+    const fontFamily = document.getElementById('font-family').value;
+    const fontSize = document.getElementById('font-size').value;
     
     // 重置预览区域
     preview.innerHTML = '';
     preview.className = 'card-preview';
+    
+    // 创建并添加字体样式
+    const fontStyle = document.createElement('style');
+    fontStyle.setAttribute('data-type', 'custom-font');
+    fontStyle.textContent = `
+        .card-content {
+            font-family: ${fontFamily} !important;
+            font-size: ${fontSize}px !important;
+            letter-spacing: 0.025em;
+            text-rendering: optimizeLegibility;
+        }
+        .card-content * {
+            font-family: inherit !important;
+            letter-spacing: inherit;
+        }
+        /* 标题特殊处理 */
+        .card-content h1,
+        .card-content h2,
+        .card-content h3,
+        .card-content h4,
+        .card-content h5,
+        .card-content h6 {
+            font-weight: 700;
+            line-height: 1.4;
+        }
+    `;
+    document.head.appendChild(fontStyle);
     
     // 添加底座颜色（最底层）
     const baseColor = document.querySelector('.gradient-option.selected').dataset.gradient;
@@ -843,8 +899,12 @@ function updatePreview() {
         }
 
         const cardElement = document.createElement('div');
-        cardElement.className = 'card-content markdown-body';
+        cardElement.className = 'card-content markdown-body custom-font';
         cardElement.innerHTML = marked.parse(cardText);
+        cardElement.style.cssText = `
+            font-family: ${fontFamily} !important;
+            font-size: ${fontSize}px;
+        `;
         contentContainer.appendChild(cardElement);
     });
 
@@ -861,23 +921,6 @@ function updatePreview() {
     
     // 将内容容器添加到包装器
     contentWrapper.appendChild(contentContainer);
-
-    const fontFamily = document.getElementById('font-family').value;
-    const fontSize = document.getElementById('font-size').value;
-    
-    // 应用样式
-    const customStyles = {
-        fontFamily: fontFamily,
-        fontSize: `${fontSize}px`,
-        backgroundColor: preview.style.getPropertyValue('--bg-color'),
-        color: preview.style.getPropertyValue('--text-color')
-    };
-    
-    Object.entries(customStyles).forEach(([key, value]) => {
-        if (value) {
-            contentWrapper.style[key] = value;
-        }
-    });
 
     // 应用比例设置
     const ratio = document.getElementById('aspect-ratio').value;
@@ -896,6 +939,13 @@ function updatePreview() {
 
     // 将包装器添加到预览区域
     preview.appendChild(contentWrapper);
+
+    // 清理之前的字体样式
+    return () => {
+        if (document.head.contains(fontStyle)) {
+            document.head.removeChild(fontStyle);
+        }
+    };
 }
 
 // 模板选择事件处理
@@ -945,7 +995,13 @@ document.querySelectorAll('.gradient-option').forEach(option => {
 
 // 监听其他设置变化
 // 字体选择实时更新
-document.getElementById('font-family').addEventListener('change', updatePreview);
+document.getElementById('font-family').addEventListener('change', function() {
+    // 清除之前的字体样式
+    const oldFontStyles = document.querySelectorAll('style[data-type="custom-font"]');
+    oldFontStyles.forEach(style => style.remove());
+    
+    updatePreview();
+});
 
 // 字体大小实时更新
 const fontSizeInput = document.getElementById('font-size');
@@ -1160,6 +1216,9 @@ document.addEventListener('DOMContentLoaded', function() {
         customSizeCheckbox.disabled = true;
         customSizeCheckbox.parentElement.classList.add('opacity-50');
     }
+
+    // 添加字体加载检测
+    checkFontLoading();
 });
 
 // 添加loading样式
@@ -1183,5 +1242,25 @@ style.textContent = `
 }
 `;
 document.head.appendChild(style);
+
+// 添加字体加载检测
+function checkFontLoading() {
+    const fontFamilies = [
+        'Noto Sans SC',
+        'LXGW WenKai',
+        'Zhi Mang Xing',
+        'Ma Shan Zheng'
+    ];
+
+    Promise.all(fontFamilies.map(font => document.fonts.load(`1em "${font}"`)))
+        .then(() => {
+            console.log('所有字体加载完成');
+            updatePreview();
+        })
+        .catch(err => {
+            console.warn('部分字体加载失败:', err);
+            updatePreview();
+        });
+}
 </script>
 {% endblock %} 
