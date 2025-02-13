@@ -19,6 +19,7 @@ from modules.image_compress import router as compress_router
 from modules.image_resize import router as resize_router
 from modules.image_format import router as format_router
 from modules.svg_editor.routes import router as svg_editor_router
+from modules.text_card.routes import router as text_card_router
 
 # 配置日志
 logging.basicConfig(
@@ -95,6 +96,13 @@ app.include_router(
     tags=["svg"]
 )
 
+# 注册文字卡片生成器模块路由
+app.include_router(
+    text_card_router,
+    prefix="/tools/text-card",
+    tags=["text"]
+)
+
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
 async def tool_page(request: Request, tool_id: str):
@@ -108,7 +116,7 @@ async def tool_page(request: Request, tool_id: str):
         )
     
     # 如果是已完成的工具，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor']:
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor', 'text-card']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面

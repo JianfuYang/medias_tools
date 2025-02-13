@@ -1,0 +1,869 @@
+{% extends "common/base.html" %}
+
+{% block title %}文字卡片生成器 - 媒体效率工具库{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- 引入 Marked.js 用于Markdown解析 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- 引入 html2canvas 用于生成图片 -->
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<!-- 引入 FileSaver.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- 引入思源黑体 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- 引入苹果风格字体 -->
+<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- 引入 GitHub Markdown 样式 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+
+<style>
+/* 全局样式 */
+:root {
+    --primary-color: #0071e3;
+    --hover-color: #0077ed;
+    --bg-color: #ffffff;
+    --text-color: #2C3E50;  /* 默认文字颜色 */
+    --secondary-text: #86868b;
+    --border-color: #d2d2d7;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.card-preview {
+    min-height: 200px;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    background: var(--bg-color);
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    padding: 1.5rem;
+    font-family: 'Noto Sans SC', sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: var(--text-color);
+    position: relative;
+    z-index: 1;
+}
+
+.control-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--secondary-text);
+    margin-bottom: 0.5rem;
+}
+
+.template-option {
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.template-option:hover {
+    transform: translateY(-2px);
+}
+
+.template-option.selected {
+    border-color: #3b82f6;
+}
+
+.gradient-option {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.gradient-option:hover {
+    transform: scale(1.1);
+}
+
+.gradient-option.selected {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* 底座颜色样式 */
+.base-color {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    z-index: 0;
+}
+
+.base-color-1 { background: linear-gradient(45deg, #12c2e9, #c471ed, #f64f59); }
+.base-color-2 { background: linear-gradient(45deg, #FF9A9E, #FAD0C4); }
+.base-color-3 { background: linear-gradient(45deg, #a8edea, #fed6e3); }
+.base-color-4 { background: linear-gradient(45deg, #d4fc79, #96e6a1); }
+.base-color-5 { background: linear-gradient(45deg, #84fab0, #8fd3f4); }
+.base-color-6 { background: linear-gradient(45deg, #a6c0fe, #f68084); }
+.base-color-7 { background: linear-gradient(45deg, #fbc2eb, #a6c1ee); }
+.base-color-8 { background: linear-gradient(45deg, #f6d365, #fda085); }
+.base-color-9 { background: linear-gradient(45deg, #ffd1ff, #fad0c4); }
+
+/* 预设模板样式 */
+.content-wrapper {
+    position: relative;
+    margin: 12px;
+    border-radius: 10px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    z-index: 1;
+    height: calc(100% - 24px);
+    padding: 1.5rem;
+}
+
+/* 渐变底座样式 */
+.gradient-none {
+    display: none;
+}
+
+.gradient-simple {
+    height: 4px;
+    background: linear-gradient(to right, #3b82f6, #60a5fa);
+}
+
+.gradient-elegant {
+    height: 6px;
+    background: linear-gradient(45deg, #f6d365, #fda085);
+}
+
+.gradient-modern {
+    height: 8px;
+    background: linear-gradient(to right, #4f46e5, #818cf8);
+}
+
+.gradient-1 {
+    background: linear-gradient(45deg, #12c2e9, #c471ed, #f64f59);
+    height: 4px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+
+.gradient-2 {
+    background: linear-gradient(45deg, #FF9A9E, #FAD0C4);
+    height: 4px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+
+.gradient-3 {
+    background: linear-gradient(45deg, #a8edea, #fed6e3);
+}
+
+.gradient-4 {
+    background: linear-gradient(45deg, #d4fc79, #96e6a1);
+}
+
+.gradient-5 {
+    background: linear-gradient(45deg, #84fab0, #8fd3f4);
+}
+
+.gradient-6 {
+    background: linear-gradient(45deg, #a6c0fe, #f68084);
+}
+
+.gradient-7 {
+    background: linear-gradient(45deg, #fbc2eb, #a6c1ee);
+}
+
+.gradient-8 {
+    background: linear-gradient(45deg, #f6d365, #fda085);
+}
+
+.gradient-9 {
+    background: linear-gradient(45deg, #ffd1ff, #fad0c4);
+}
+
+/* 预设模板/背景颜色 */
+.bg-template {
+    padding: 1.5rem;
+    height: 100%;
+    width: 100%;
+}
+
+/* 调整预览区域在移动端的位置 */
+@media (max-width: 1024px) {
+    .card-preview {
+        min-height: 250px;
+    }
+}
+
+/* Markdown 样式定制 */
+.markdown-body {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: transparent;
+}
+
+.markdown-body h1 {
+    font-size: 1.75em;
+    border-bottom: none;
+    padding-bottom: 0.3em;
+    margin-bottom: 0.75em;
+}
+
+.markdown-body h2 {
+    font-size: 1.5em;
+    border-bottom: none;
+    padding-bottom: 0.3em;
+    margin-bottom: 0.75em;
+}
+
+.markdown-body blockquote {
+    border-left: 4px solid currentColor;
+    opacity: 0.8;
+    margin: 1em 0;
+    padding: 0 1em;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+.markdown-body code {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+}
+
+.markdown-body pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+    padding: 1em;
+    margin: 1em 0;
+}
+
+/* 添加预览区域容器样式 */
+.preview-container {
+    width: 100%;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 1rem;
+    margin-top: 2rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-12">
+    <!-- 标题区域 -->
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-semibold mb-4">文字卡片生成器</h1>
+        <p class="text-lg text-secondary-text max-w-2xl mx-auto">
+            创建优雅美观的文字卡片，支持Markdown格式，适合社交媒体分享或个人使用。最佳文字图工具 <a href="https://midjourney.com" class="text-blue-600 hover:underline" target="_blank">Midjourney</a>
+        </p>
+    </div>
+
+    <!-- 主要内容区域：上下布局 -->
+    <div class="space-y-8">
+        <!-- 上部分：输入和参数设置区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 左侧：文本输入区域 -->
+            <div class="control-panel h-full">
+                <h2 class="section-title">输入文字</h2>
+                <div class="mb-4 flex space-x-4">
+                    <button id="example-1" class="text-sm text-primary-color hover:text-hover-color">
+                        示例1
+                    </button>
+                    <button id="example-2" class="text-sm text-primary-color hover:text-hover-color">
+                        示例2
+                    </button>
+                    <button id="example-3" class="text-sm text-primary-color hover:text-hover-color">
+                        示例3
+                    </button>
+                </div>
+                <textarea id="text-input" 
+                    class="w-full h-[calc(100%-80px)] p-4 border border-border-color rounded-lg resize-none focus:ring-2 focus:ring-primary-color focus:border-transparent"
+                    placeholder="在此输入文字内容，支持Markdown格式（如：# 标题、**粗体**、> 引用等）..."></textarea>
+            </div>
+
+            <!-- 右侧：参数设置区域 -->
+            <div class="control-panel h-full">
+                <h2 class="section-title">样式设置</h2>
+                <div class="grid grid-cols-1 gap-4 h-[calc(100%-48px)] overflow-y-auto">
+                    <!-- 背景颜色/模板选择 -->
+                    <div>
+                        <h3 class="input-label">选择模板</h3>
+                        <div class="grid grid-cols-4 gap-2">
+                            <!-- 清新简约 -->
+                            <div class="template-option selected" data-template="clean" 
+                                data-bg-color="#FFFFFF" data-text-color="#2C3E50" data-name="清新简约" data-custom="true">
+                                <div class="h-16 bg-white rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">清新简约</p>
+                            </div>
+                            
+                            <!-- 优雅米色 -->
+                            <div class="template-option" data-template="elegant"
+                                data-bg-color="#F8F4F0" data-text-color="#2C3E50" data-name="优雅米色" data-custom="false">
+                                <div class="h-16 bg-[#F8F4F0] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">优雅米色</p>
+                            </div>
+                            
+                            <!-- 深邃夜空 -->
+                            <div class="template-option" data-template="dark"
+                                data-bg-color="#1A1A1A" data-text-color="#FFFFFF" data-name="深邃夜空" data-custom="false">
+                                <div class="h-16 bg-[#1A1A1A] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">深邃夜空</p>
+                            </div>
+                            
+                            <!-- 薄荷清新 -->
+                            <div class="template-option" data-template="mint"
+                                data-bg-color="#E8F5E9" data-text-color="#2C3E50" data-name="薄荷清新" data-custom="false">
+                                <div class="h-16 bg-[#E8F5E9] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">薄荷清新</p>
+                            </div>
+                            
+                            <!-- 天空蓝 -->
+                            <div class="template-option" data-template="sky"
+                                data-bg-color="#E3F2FD" data-text-color="#2C3E50" data-name="天空蓝" data-custom="false">
+                                <div class="h-16 bg-[#E3F2FD] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">天空蓝</p>
+                            </div>
+                            
+                            <!-- 暖阳橙 -->
+                            <div class="template-option" data-template="sunset"
+                                data-bg-color="#FFF3E0" data-text-color="#2C3E50" data-name="暖阳橙" data-custom="false">
+                                <div class="h-16 bg-[#FFF3E0] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">暖阳橙</p>
+                            </div>
+                            
+                            <!-- 浅粉红 -->
+                            <div class="template-option" data-template="pink"
+                                data-bg-color="#FCE4EC" data-text-color="#2C3E50" data-name="浅粉红" data-custom="false">
+                                <div class="h-16 bg-[#FCE4EC] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">浅粉红</p>
+                            </div>
+                            
+                            <!-- 淡紫色 -->
+                            <div class="template-option" data-template="lavender"
+                                data-bg-color="#F3E5F5" data-text-color="#2C3E50" data-name="淡紫色" data-custom="false">
+                                <div class="h-16 bg-[#F3E5F5] rounded-lg shadow-sm"></div>
+                                <p class="mt-2 text-xs text-center text-gray-600">淡紫色</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 自定义背景颜色 -->
+                    <div class="mt-4">
+                        <label class="input-label">自定义背景颜色</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="bg-color" value="#FFFFFF" class="w-full h-10 rounded-lg cursor-pointer">
+                            <div class="bg-white px-3 py-2 rounded-lg border border-gray-200 min-w-[90px] text-sm text-gray-600" id="color-value">
+                                #FFFFFF
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 底座颜色 -->
+                    <div>
+                        <h3 class="input-label">底座颜色</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="gradient-option selected" data-gradient="none" style="background: #e5e7eb;">
+                                <span class="text-red-500 text-2xl flex items-center justify-center h-full">🚫</span>
+                            </div>
+                            <div class="gradient-option base-color-1" data-gradient="base-color-1"></div>
+                            <div class="gradient-option base-color-2" data-gradient="base-color-2"></div>
+                            <div class="gradient-option base-color-3" data-gradient="base-color-3"></div>
+                            <div class="gradient-option base-color-4" data-gradient="base-color-4"></div>
+                            <div class="gradient-option base-color-5" data-gradient="base-color-5"></div>
+                            <div class="gradient-option base-color-6" data-gradient="base-color-6"></div>
+                            <div class="gradient-option base-color-7" data-gradient="base-color-7"></div>
+                            <div class="gradient-option base-color-8" data-gradient="base-color-8"></div>
+                            <div class="gradient-option base-color-9" data-gradient="base-color-9"></div>
+                        </div>
+                    </div>
+
+                    <!-- 字体设置 -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="input-label">字体</label>
+                            <select id="font-family" class="w-full border border-gray-300 rounded-lg p-2">
+                                <option value="Noto Sans SC">思源黑体</option>
+                                <option value="微软雅黑">微软雅黑</option>
+                                <option value="宋体">宋体</option>
+                                <option value="楷体">楷体</option>
+                                <option value="黑体">黑体</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label">字体大小</label>
+                            <input type="number" id="font-size" value="16" min="12" max="72" 
+                                class="w-full border border-gray-300 rounded-lg p-2">
+                        </div>
+                    </div>
+
+                    <!-- 其他设置 -->
+                    <div>
+                        <label class="input-label">图片比例</label>
+                        <select id="aspect-ratio" class="w-full border border-gray-300 rounded-lg p-2">
+                            <option value="auto">自由比例</option>
+                            <option value="1:1">1:1 正方形</option>
+                            <option value="4:3">4:3 横版</option>
+                            <option value="16:9">16:9 宽屏</option>
+                            <option value="3:4">3:4 竖版</option>
+                            <option value="9:16">9:16 手机屏</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="input-label">自动分割长文本</label>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="auto-split" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="ml-2 text-sm text-gray-600">自动将长文本分割成多张卡片</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下部分：预览和导出区域 -->
+        <div class="space-y-6">
+            <!-- 预览区域 -->
+            <div class="control-panel">
+                <h2 class="section-title text-center">预览</h2>
+                <div class="preview-container">
+                    <div id="card-preview" class="card-preview"></div>
+                </div>
+            </div>
+
+            <!-- 导出按钮 -->
+            <div class="flex justify-center space-x-4 mt-8">
+                <button id="download-png" class="px-6 py-2.5 bg-primary-color text-white rounded-full hover:bg-hover-color transition-colors">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        导出为PNG
+                    </span>
+                </button>
+                <button id="download-jpg" class="px-6 py-2.5 bg-primary-color text-white rounded-full hover:bg-hover-color transition-colors">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        导出为JPG
+                    </span>
+                </button>
+            </div>
+
+            <!-- 导出提示 -->
+            <div class="text-center mt-4 text-sm text-secondary-text">
+                <p>提示：导出的图片将保持原始比例和质量</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 初始化预览
+function initPreview() {
+    const preview = document.getElementById('card-preview');
+    preview.style.minHeight = window.innerWidth > 1024 ? '400px' : '250px';
+    updatePreview();
+}
+
+// 工具函数：设置按钮加载状态
+function setButtonLoading(button, isLoading) {
+    if (!button) return;
+    button.disabled = isLoading;
+    const span = button.querySelector('span');
+    if (isLoading) {
+        span.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>`;
+    } else {
+        span.innerHTML = button.dataset.originalContent;
+    }
+}
+
+// 工具函数：显示提示消息
+function showToast(message, type = 'error') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+        type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// 导出为图片
+async function exportToImage(format) {
+    const button = document.getElementById(`download-${format}`);
+    if (!button.dataset.originalContent) {
+        button.dataset.originalContent = button.querySelector('span').innerHTML;
+    }
+    
+    setButtonLoading(button, true);
+    
+    try {
+        const preview = document.getElementById('card-preview');
+        const ratio = document.getElementById('aspect-ratio').value;
+        
+        // 保存原始样式
+        const originalStyle = {
+            width: preview.style.width,
+            height: preview.style.height,
+            aspectRatio: preview.style.aspectRatio
+        };
+        
+        // 设置预览区域的比例
+        if (ratio !== 'auto') {
+            const [width, height] = ratio.split(':').map(Number);
+            const baseSize = 1200; // 基础尺寸
+            if (width > height) {
+                preview.style.width = `${baseSize}px`;
+                preview.style.height = `${(baseSize * height) / width}px`;
+            } else {
+                preview.style.height = `${baseSize}px`;
+                preview.style.width = `${(baseSize * width) / height}px`;
+            }
+            preview.style.aspectRatio = `${width}/${height}`;
+        }
+        
+        // 创建canvas
+        const canvas = await html2canvas(preview, {
+            scale: 2, // 提高清晰度
+            useCORS: true,
+            backgroundColor: format === 'jpg' ? '#FFFFFF' : null,
+            logging: false,
+            allowTaint: true,
+            foreignObjectRendering: true,
+            onclone: function(clonedDoc) {
+                const clonedPreview = clonedDoc.getElementById('card-preview');
+                clonedPreview.style.transform = 'none';
+                clonedPreview.style.boxShadow = 'none';
+            }
+        });
+        
+        // 转换为blob
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                showToast('导出失败，请重试');
+                return;
+            }
+            
+            // 下载文件
+            const timestamp = new Date().getTime();
+            const filename = `text-card-${timestamp}.${format}`;
+            saveAs(blob, filename);
+            showToast('导出成功！', 'success');
+        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('导出失败：' + error.message);
+    } finally {
+        setButtonLoading(button, false);
+        // 恢复预览区域的原始样式
+        Object.assign(preview.style, originalStyle);
+    }
+}
+
+// 自动分割长文本
+function splitLongText(text) {
+    if (!document.getElementById('auto-split').checked) return [text];
+    
+    const maxLength = 500; // 每张卡片的最大字符数
+    const paragraphs = text.split('\n\n');
+    const cards = [];
+    let currentCard = '';
+    
+    for (const paragraph of paragraphs) {
+        if (currentCard.length + paragraph.length > maxLength) {
+            if (currentCard) cards.push(currentCard.trim());
+            currentCard = paragraph;
+        } else {
+            currentCard += (currentCard ? '\n\n' : '') + paragraph;
+        }
+    }
+    
+    if (currentCard) cards.push(currentCard.trim());
+    return cards;
+}
+
+// 示例文本
+const examples = {
+    example1: `# 心灵鸡汤
+
+> 生活不是等待暴风雨过去，而是学会在雨中翩翩起舞。
+
+**每一个不曾起舞的日子，都是对生命的辜负。**`,
+
+    example2: `# 工作笔记
+
+## 今日任务
+
+- [x] 完成项目方案
+- [x] 团队会议
+- [ ] 代码审查
+
+*deadline: 2024-03-20*`,
+
+    example3: `# 美食食谱
+
+## 红烧肉
+
+1. 准备食材
+2. 煸炒糖色
+3. 加入调料
+
+*Tips: 小火慢炖更入味*`
+};
+
+// 加载示例文本
+function loadExample(id) {
+    const textarea = document.getElementById('text-input');
+    textarea.value = examples[`example${id}`];
+    updatePreview();
+}
+
+// 更新预览
+function updatePreview() {
+    const preview = document.getElementById('card-preview');
+    const selectedTemplate = document.querySelector('.template-option.selected');
+    const isCustomTemplate = selectedTemplate.dataset.custom === 'true';
+    const bgColorInput = document.getElementById('bg-color');
+    
+    // 重置预览区域
+    preview.innerHTML = '';
+    preview.className = 'card-preview';
+    
+    // 设置背景颜色和文字颜色
+    if (isCustomTemplate) {
+        preview.style.setProperty('--bg-color', bgColorInput.value);
+    } else {
+        preview.style.setProperty('--bg-color', selectedTemplate.dataset.bgColor);
+        bgColorInput.value = selectedTemplate.dataset.bgColor;
+    }
+    
+    // 设置文字颜色（对所有模板都生效）
+    document.documentElement.style.setProperty('--text-color', selectedTemplate.dataset.textColor);
+    
+    // 添加底座颜色
+    const baseColor = document.querySelector('.gradient-option.selected').dataset.gradient;
+    if (baseColor !== 'none') {
+        const baseColorElement = document.createElement('div');
+        baseColorElement.className = `base-color ${baseColor}`;
+        preview.appendChild(baseColorElement);
+    }
+    
+    // 创建内容包装器
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'content-wrapper';
+    
+    // 创建内容容器
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'bg-template';
+    
+    const text = document.getElementById('text-input').value;
+    const cards = splitLongText(text);
+
+    cards.forEach((cardText, index) => {
+        if (index > 0) {
+            const pageDivider = document.createElement('div');
+            pageDivider.className = 'border-t border-gray-200 my-4';
+            contentContainer.appendChild(pageDivider);
+        }
+
+        const cardElement = document.createElement('div');
+        cardElement.className = 'card-content markdown-body';
+        cardElement.innerHTML = marked.parse(cardText);
+        contentContainer.appendChild(cardElement);
+    });
+
+    // 将内容容器添加到包装器
+    contentWrapper.appendChild(contentContainer);
+
+    const fontFamily = document.getElementById('font-family').value;
+    const fontSize = document.getElementById('font-size').value;
+    
+    // 应用样式
+    const customStyles = {
+        fontFamily: fontFamily,
+        fontSize: `${fontSize}px`,
+        backgroundColor: preview.style.getPropertyValue('--bg-color'),
+        color: preview.style.getPropertyValue('--text-color')
+    };
+    
+    Object.entries(customStyles).forEach(([key, value]) => {
+        if (value) {
+            contentWrapper.style[key] = value;
+        }
+    });
+
+    // 应用比例设置
+    const ratio = document.getElementById('aspect-ratio').value;
+    if (ratio !== 'auto') {
+        const [width, height] = ratio.split(':').map(Number);
+        preview.style.aspectRatio = `${width}/${height}`;
+    }
+
+    // 将包装器添加到预览区域
+    preview.appendChild(contentWrapper);
+}
+
+// 模板选择事件处理
+document.querySelectorAll('.template-option').forEach(option => {
+    option.addEventListener('click', function() {
+        // 移除其他模板的选中状态
+        document.querySelectorAll('.template-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        
+        // 添加当前模板的选中状态
+        this.classList.add('selected');
+        
+        // 获取模板数据
+        const bgColor = this.dataset.bgColor;
+        const textColor = this.dataset.textColor;
+        const isCustom = this.dataset.custom === 'true';
+        
+        // 更新背景色输入框和预览
+        const bgColorInput = document.getElementById('bg-color');
+        bgColorInput.value = bgColor;
+        bgColorInput.disabled = !isCustom;
+        
+        // 更新颜色值显示
+        const colorValueDisplay = document.getElementById('color-value');
+        colorValueDisplay.textContent = bgColor.toUpperCase();
+        
+        // 更新CSS变量
+        const preview = document.getElementById('card-preview');
+        preview.style.setProperty('--bg-color', bgColor);
+        document.documentElement.style.setProperty('--text-color', textColor);
+        
+        updatePreview();
+    });
+});
+
+// 监听渐变选择
+document.querySelectorAll('.gradient-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.gradient-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        this.classList.add('selected');
+        updatePreview();
+    });
+});
+
+// 监听其他设置变化
+// 字体选择实时更新
+document.getElementById('font-family').addEventListener('change', updatePreview);
+
+// 字体大小实时更新
+const fontSizeInput = document.getElementById('font-size');
+fontSizeInput.addEventListener('input', updatePreview);
+fontSizeInput.addEventListener('change', updatePreview);
+
+// 背景颜色变化时的处理
+const bgColorInput = document.getElementById('bg-color');
+const colorValueDisplay = document.getElementById('color-value');
+
+bgColorInput.addEventListener('input', function() {
+    // 当背景颜色改变时，自动切换到自定义模板
+    const customTemplate = document.querySelector('.template-option[data-template="clean"]');
+    if (!customTemplate.classList.contains('selected')) {
+        document.querySelectorAll('.template-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        customTemplate.classList.add('selected');
+    }
+    
+    // 直接更新CSS变量
+    const preview = document.getElementById('card-preview');
+    preview.style.setProperty('--bg-color', this.value);
+    document.documentElement.style.setProperty('--text-color', customTemplate.dataset.textColor);
+    
+    // 更新颜色值显示
+    colorValueDisplay.textContent = this.value.toUpperCase();
+    
+    updatePreview();
+});
+
+// 图片比例实时更新
+document.getElementById('aspect-ratio').addEventListener('change', function() {
+    const preview = document.getElementById('card-preview');
+    const ratio = this.value;
+    if (ratio === 'auto') {
+        preview.style.aspectRatio = 'auto';
+    } else {
+        const [width, height] = ratio.split(':').map(Number);
+        preview.style.aspectRatio = `${width}/${height}`;
+    }
+    updatePreview();
+});
+
+// 监听自动分割开关
+document.getElementById('auto-split').addEventListener('change', updatePreview);
+
+// 绑定导出按钮事件
+document.getElementById('download-png').addEventListener('click', () => exportToImage('png'));
+document.getElementById('download-jpg').addEventListener('click', () => exportToImage('jpg'));
+
+// 绑定示例按钮事件
+document.getElementById('example-1').addEventListener('click', () => loadExample(1));
+document.getElementById('example-2').addEventListener('click', () => loadExample(2));
+document.getElementById('example-3').addEventListener('click', () => loadExample(3));
+
+// 初始化预览
+updatePreview();
+
+// 初始化时设置颜色值显示
+document.addEventListener('DOMContentLoaded', function() {
+    colorValueDisplay.textContent = bgColorInput.value.toUpperCase();
+});
+</script>
+{% endblock %} 
