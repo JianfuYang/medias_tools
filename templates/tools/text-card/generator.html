@@ -580,52 +580,78 @@ function showToast(message, type = 'info') {
 // 导出图片
 async function exportToImage(format) {
     const preview = document.getElementById('card-preview');
+    const originalPreviewContainer = document.querySelector('.preview-container');
     const previewContainer = document.createElement('div');
     const button = document.getElementById(`download-${format}`);
     
     try {
         setButtonLoading(button, true);
         
-        // 创建临时容器并设置样式
-        previewContainer.style.cssText = `
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            display: inline-block;
+        // 创建临时容器
+        const tempWrapper = document.createElement('div');
+        tempWrapper.style.cssText = `
             position: fixed;
             left: -9999px;
             top: -9999px;
+            width: ${originalPreviewContainer.offsetWidth}px;
+            height: ${originalPreviewContainer.offsetHeight}px;
+            background-color: #ffffff;
+            padding: 40px;
         `;
+        document.body.appendChild(tempWrapper);
         
-        // 克隆预览内容到临时容器
-        const clonedPreview = preview.cloneNode(true);
+        // 声明尺寸变量
+        let width, height;
+        const customSizeCheckbox = document.getElementById('custom-size');
         
-        // 设置克隆预览的尺寸
-        const width = document.getElementById('card-width').value;
-        const height = document.getElementById('card-height').value;
-        clonedPreview.style.width = `${width}px`;
-        clonedPreview.style.height = `${height}px`;
-        clonedPreview.style.margin = '0';
-        clonedPreview.style.transform = 'none';
+        // 获取尺寸
+        if (customSizeCheckbox.checked) {
+            width = parseInt(document.getElementById('card-width').value);
+            height = parseInt(document.getElementById('card-height').value);
+            
+            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+                throw new Error('自定义卡片尺寸无效');
+            }
+        } else {
+            width = preview.offsetWidth;
+            height = preview.offsetHeight;
+            
+            if (width <= 0 || height <= 0) {
+                throw new Error('预览区域尺寸无效');
+            }
+        }
         
-        previewContainer.appendChild(clonedPreview);
-        document.body.appendChild(previewContainer);
+        // 克隆预览内容
+        const clonedContent = preview.cloneNode(true);
+        clonedContent.style.cssText = preview.style.cssText;
+        clonedContent.style.width = `${width}px`;
+        clonedContent.style.height = `${height}px`;
+        clonedContent.style.margin = '0';
+        clonedContent.style.position = 'relative';
+        
+        // 将克隆的内容添加到临时容器
+        tempWrapper.appendChild(clonedContent);
         
         // 配置html2canvas
-        const canvas = await html2canvas(previewContainer, {
+        const canvas = await html2canvas(tempWrapper, {
             scale: 2, // 提高清晰度
             useCORS: true, // 支持跨域图片
-            backgroundColor: '#ffffff', // 使用白色背景
+            backgroundColor: '#ffffff',
             logging: false,
-            removeContainer: true,
             allowTaint: true,
-            width: previewContainer.offsetWidth,
-            height: previewContainer.offsetHeight
+            width: tempWrapper.offsetWidth,
+            height: tempWrapper.offsetHeight,
+            onclone: function(clonedDoc) {
+                // 确保样式完全应用
+                const clonedWrapper = clonedDoc.querySelector('[style*="position: fixed"]');
+                if (clonedWrapper) {
+                    clonedWrapper.style.transform = 'none';
+                }
+            }
         });
         
-        // 清理临时元素
-        document.body.removeChild(previewContainer);
+        // 清理临时容器
+        document.body.removeChild(tempWrapper);
         
         // 转换为blob并下载
         canvas.toBlob(function(blob) {
@@ -634,7 +660,7 @@ async function exportToImage(format) {
             }
             
             const timestamp = new Date().getTime();
-            const filename = `text-card-${timestamp}.${format}`;
+            const filename = `text-card-${width}x${height}-${timestamp}.${format}`;
             
             saveAs(blob, filename);
             showToast('导出成功！', 'success');
@@ -645,9 +671,9 @@ async function exportToImage(format) {
         showToast(`导出失败: ${error.message}`, 'error');
     } finally {
         setButtonLoading(button, false);
-        // 确保清理临时元素
-        if (document.body.contains(previewContainer)) {
-            document.body.removeChild(previewContainer);
+        // 确保清理临时容器
+        if (document.body.contains(tempWrapper)) {
+            document.body.removeChild(tempWrapper);
         }
     }
 }
@@ -717,11 +743,23 @@ function updatePreview() {
     const selectedTemplate = document.querySelector('.template-option.selected');
     const isCustomTemplate = selectedTemplate.dataset.custom === 'true';
     const bgColorInput = document.getElementById('bg-color');
+    const customSizeCheckbox = document.getElementById('custom-size');
+    const width = parseInt(document.getElementById('card-width').value);
+    const height = parseInt(document.getElementById('card-height').value);
     
     // 重置预览区域
     preview.innerHTML = '';
     preview.className = 'card-preview';
     
+    // 设置预览尺寸
+    if (customSizeCheckbox.checked && !isNaN(width) && !isNaN(height)) {
+        preview.style.width = `${width}px`;
+        preview.style.height = `${height}px`;
+        preview.style.minHeight = `${height}px`;  // 确保最小高度
+        previewContainer.style.minWidth = `${width + 80}px`;
+        previewContainer.style.minHeight = `${height + 80}px`;
+    }
+
     // 创建内容并应用样式
     // ... (其他内容创建代码保持不变)
     
