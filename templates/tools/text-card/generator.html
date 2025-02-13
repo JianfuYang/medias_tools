@@ -598,7 +598,7 @@ async function exportToImage(format) {
             top: -9999px;
             width: ${width}px;
             height: ${height}px;
-            background-color: #ffffff;
+            background-color: ${format === 'jpg' ? '#ffffff' : 'transparent'};
             overflow: hidden;
             border-radius: ${cardStyle.borderRadius};
         `;
@@ -631,7 +631,7 @@ async function exportToImage(format) {
         const canvas = await html2canvas(tempWrapper, {
             scale: 1, // 保持原始尺寸
             useCORS: true, // 支持跨域图片
-            backgroundColor: '#ffffff',
+            backgroundColor: format === 'jpg' ? '#ffffff' : null,
             logging: false,
             allowTaint: true,
             width: width,
@@ -661,7 +661,7 @@ async function exportToImage(format) {
             
             saveAs(blob, filename);
             showToast('导出成功！', 'success');
-        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
+        }, format === 'png' ? 'image/png' : 'image/jpeg', format === 'jpg' ? 0.92 : undefined);
         
     } catch (error) {
         console.error('导出图片失败:', error);
