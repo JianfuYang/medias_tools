@@ -500,6 +500,7 @@ body {
             <!-- 导出按钮区域 -->
             <div class="flex justify-center space-x-4 mt-6">
                 <button id="download-png" 
+                    data-format="png"
                     class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center">
                     <span class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -510,6 +511,7 @@ body {
                     </span>
                 </button>
                 <button id="download-jpg"
+                    data-format="jpg"
                     class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center">
                     <span class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,62 +539,26 @@ function initPreview() {
     updatePreview();
 }
 
-// 修改导出图片函数
-async function exportToImage(format) {
-    const preview = document.getElementById('card-preview');
-    const button = document.getElementById(`download-${format}`);
+// 设置按钮加载状态
+function setButtonLoading(button, loading) {
+    if (!button) return;
     
-    // 显示加载状态
-    showToast('正在生成图片...', 'info');
-    setButtonLoading(button, true);
+    const format = button.getAttribute('data-format');
+    const originalText = `导出为${format.toUpperCase()}`;
     
-    try {
-        // 创建canvas
-        const canvas = await html2canvas(preview, {
-            scale: 2, // 提高导出图片质量
-            useCORS: true, // 允许加载跨域图片
-            backgroundColor: format === 'jpg' ? '#FFFFFF' : null,
-            logging: false,
-            allowTaint: true,
-            foreignObjectRendering: true, // 添加这个选项以支持更好的渲染
-            onclone: function(clonedDoc) {
-                const clonedPreview = clonedDoc.getElementById('card-preview');
-                if (clonedPreview) {
-                    clonedPreview.style.transform = 'none';
-                    clonedPreview.style.margin = '0';
-                    clonedPreview.style.boxShadow = 'none';
-                }
-            }
-        });
-        
-        // 转换为Blob并下载
-        canvas.toBlob(function(blob) {
-            if (!blob) {
-                throw new Error('图片生成失败');
-            }
-            
-            // 生成文件名
-            const timestamp = new Date().getTime();
-            const filename = `text-card-${timestamp}.${format}`;
-            
-            // 使用FileSaver.js下载
-            saveAs(blob, filename);
-            
-            // 显示成功提示
-            showToast('导出成功！', 'success');
-            
-            // 恢复按钮状态
-            setButtonLoading(button, false);
-        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
-        
-    } catch (error) {
-        console.error('导出图片失败:', error);
-        showToast(`导出失败: ${error.message}`, 'error');
-        setButtonLoading(button, false);
-    }
+    button.disabled = loading;
+    button.innerHTML = loading ? 
+        `<span class="loading"></span> 导出中...` : 
+        `<span class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            ${originalText}
+        </span>`;
 }
 
-// 修改提示消息函数
+// 显示提示信息
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     const bgColor = {
@@ -609,6 +575,81 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// 导出图片
+async function exportToImage(format) {
+    const preview = document.getElementById('card-preview');
+    const previewContainer = document.createElement('div');
+    const button = document.getElementById(`download-${format}`);
+    
+    try {
+        setButtonLoading(button, true);
+        
+        // 创建临时容器并设置样式
+        previewContainer.style.cssText = `
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: inline-block;
+            position: fixed;
+            left: -9999px;
+            top: -9999px;
+        `;
+        
+        // 克隆预览内容到临时容器
+        const clonedPreview = preview.cloneNode(true);
+        
+        // 设置克隆预览的尺寸
+        const width = document.getElementById('card-width').value;
+        const height = document.getElementById('card-height').value;
+        clonedPreview.style.width = `${width}px`;
+        clonedPreview.style.height = `${height}px`;
+        clonedPreview.style.margin = '0';
+        clonedPreview.style.transform = 'none';
+        
+        previewContainer.appendChild(clonedPreview);
+        document.body.appendChild(previewContainer);
+        
+        // 配置html2canvas
+        const canvas = await html2canvas(previewContainer, {
+            scale: 2, // 提高清晰度
+            useCORS: true, // 支持跨域图片
+            backgroundColor: '#ffffff', // 使用白色背景
+            logging: false,
+            removeContainer: true,
+            allowTaint: true,
+            width: previewContainer.offsetWidth,
+            height: previewContainer.offsetHeight
+        });
+        
+        // 清理临时元素
+        document.body.removeChild(previewContainer);
+        
+        // 转换为blob并下载
+        canvas.toBlob(function(blob) {
+            if (!blob) {
+                throw new Error('生成图片失败');
+            }
+            
+            const timestamp = new Date().getTime();
+            const filename = `text-card-${timestamp}.${format}`;
+            
+            saveAs(blob, filename);
+            showToast('导出成功！', 'success');
+        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
+        
+    } catch (error) {
+        console.error('导出图片失败:', error);
+        showToast(`导出失败: ${error.message}`, 'error');
+    } finally {
+        setButtonLoading(button, false);
+        // 确保清理临时元素
+        if (document.body.contains(previewContainer)) {
+            document.body.removeChild(previewContainer);
+        }
+    }
 }
 
 // 自动分割长文本
@@ -1064,5 +1105,27 @@ document.addEventListener('DOMContentLoaded', function() {
         customSizeCheckbox.parentElement.classList.add('opacity-50');
     }
 });
+
+// 添加loading样式
+const style = document.createElement('style');
+style.textContent = `
+.loading {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5em;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %} 
