@@ -246,7 +246,10 @@ uvicorn main:app --reload
 
 ## 使用指南
 
-### YouTube下载器
+### 首页
+![image](readme_static/home_demo.png)
+
+### 1.YouTube下载器
 1. 单视频下载
    - 输入视频URL
    - 选择下载质量
@@ -258,9 +261,12 @@ uvicorn main:app --reload
 3. 下载管理
    - 查看下载历史
    - 管理已下载文件
-   - 预览和播放视频
+   - 预览和播放视频 
+ 
+![image](readme_static/youtube_downloader_demo.png)
 
-### 图片压缩工具
+### 2.图片压缩工具
+![image](readme_static/image_compress_demo.png)
 1. 上传图片
    - 点击上传或拖拽图片
    - 支持批量上传
@@ -277,8 +283,10 @@ uvicorn main:app --reload
 2. 输入问题
 3. 查看历史记录
 4. 导出会话
+![image](readme_static/chatgpt_demo.png)
 
 ### 调整大小工具
+![image](readme_static/resize_demo.png)
 1. 选择或拖放图片到上传区域
 2. 在调整设置中输入目标宽度或高度
 3. 可选择是否锁定宽高比例
@@ -286,6 +294,8 @@ uvicorn main:app --reload
 5. 确认效果后点击下载按钮保存
 
 ### 格式转换工具
+
+![image](readme_static/image_format_demo.png)
 1. 上传图片
    - 点击选择或拖拽上传图片
    - 支持批量上传
@@ -313,6 +323,10 @@ uvicorn main:app --reload
    - 批量下载时会有短暂延迟
    - 建议大文件先压缩后转换
 
+![image](readme_static/image-format_demo.png)
+![image](readme_static/text-card1.png)
+![image](readme_static/text-card2.png)
+![image](readme_static/svg_editor_demo.png)
 ## 开发计划
 
 ### 2024 Q1
