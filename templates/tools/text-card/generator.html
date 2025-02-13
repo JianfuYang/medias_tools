@@ -580,72 +580,69 @@ function showToast(message, type = 'info') {
 // 导出图片
 async function exportToImage(format) {
     const preview = document.getElementById('card-preview');
-    const originalPreviewContainer = document.querySelector('.preview-container');
-    const previewContainer = document.createElement('div');
     const button = document.getElementById(`download-${format}`);
     
     try {
         setButtonLoading(button, true);
         
-        // 创建临时容器
+        // 获取卡片实际内容区域的尺寸和样式
+        const cardStyle = window.getComputedStyle(preview);
+        const width = preview.offsetWidth;
+        const height = preview.offsetHeight;
+        
+        // 创建临时容器，只包含卡片内容
         const tempWrapper = document.createElement('div');
         tempWrapper.style.cssText = `
             position: fixed;
             left: -9999px;
             top: -9999px;
-            width: ${originalPreviewContainer.offsetWidth}px;
-            height: ${originalPreviewContainer.offsetHeight}px;
+            width: ${width}px;
+            height: ${height}px;
             background-color: #ffffff;
-            padding: 40px;
+            overflow: hidden;
+            border-radius: ${cardStyle.borderRadius};
         `;
         document.body.appendChild(tempWrapper);
         
-        // 声明尺寸变量
-        let width, height;
-        const customSizeCheckbox = document.getElementById('custom-size');
-        
-        // 获取尺寸
-        if (customSizeCheckbox.checked) {
-            width = parseInt(document.getElementById('card-width').value);
-            height = parseInt(document.getElementById('card-height').value);
-            
-            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
-                throw new Error('自定义卡片尺寸无效');
-            }
-        } else {
-            width = preview.offsetWidth;
-            height = preview.offsetHeight;
-            
-            if (width <= 0 || height <= 0) {
-                throw new Error('预览区域尺寸无效');
-            }
-        }
-        
         // 克隆预览内容
         const clonedContent = preview.cloneNode(true);
-        clonedContent.style.cssText = preview.style.cssText;
-        clonedContent.style.width = `${width}px`;
-        clonedContent.style.height = `${height}px`;
-        clonedContent.style.margin = '0';
-        clonedContent.style.position = 'relative';
+        
+        // 复制所有计算后的样式
+        const computedStyle = window.getComputedStyle(preview);
+        Array.from(computedStyle).forEach(key => {
+            clonedContent.style[key] = computedStyle[key];
+        });
+        
+        // 确保尺寸和位置正确
+        clonedContent.style.cssText += `
+            width: ${width}px;
+            height: ${height}px;
+            margin: 0;
+            position: relative;
+            transform: none;
+            border-radius: ${cardStyle.borderRadius};
+            background: ${cardStyle.background};
+        `;
         
         // 将克隆的内容添加到临时容器
         tempWrapper.appendChild(clonedContent);
         
         // 配置html2canvas
         const canvas = await html2canvas(tempWrapper, {
-            scale: 2, // 提高清晰度
+            scale: 1, // 保持原始尺寸
             useCORS: true, // 支持跨域图片
             backgroundColor: '#ffffff',
             logging: false,
             allowTaint: true,
-            width: tempWrapper.offsetWidth,
-            height: tempWrapper.offsetHeight,
+            width: width,
+            height: height,
+            imageTimeout: 0,
+            removeContainer: true,
             onclone: function(clonedDoc) {
-                // 确保样式完全应用
-                const clonedWrapper = clonedDoc.querySelector('[style*="position: fixed"]');
-                if (clonedWrapper) {
-                    clonedWrapper.style.transform = 'none';
+                // 确保渐变和样式正确应用
+                const clonedElement = clonedDoc.querySelector('#card-preview');
+                if (clonedElement) {
+                    clonedElement.style.cssText = clonedContent.style.cssText;
                 }
             }
         });
@@ -671,10 +668,6 @@ async function exportToImage(format) {
         showToast(`导出失败: ${error.message}`, 'error');
     } finally {
         setButtonLoading(button, false);
-        // 确保清理临时容器
-        if (document.body.contains(tempWrapper)) {
-            document.body.removeChild(tempWrapper);
-        }
     }
 }
 
