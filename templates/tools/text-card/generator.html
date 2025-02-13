@@ -760,6 +760,9 @@ function updatePreview() {
     // 创建内容容器（背景层）
     const contentContainer = document.createElement('div');
     contentContainer.className = 'bg-template';
+    contentContainer.style.cssText = `
+        padding-bottom: 40px; /* 增加底部内边距，为水印留出空间 */
+    `;
     contentWrapper.appendChild(contentContainer);
     
     // 创建水印容器（最上层，但在内容容器内）
@@ -794,7 +797,7 @@ function updatePreview() {
     const copyrightWatermark = document.createElement('div');
     copyrightWatermark.style.cssText = `
         position: absolute;
-        bottom: 12px;
+        bottom: 16px;
         left: 50%;
         transform: translateX(-50%);
         font-size: 12px;
@@ -810,7 +813,7 @@ function updatePreview() {
     const wordCountWatermark = document.createElement('div');
     wordCountWatermark.style.cssText = `
         position: absolute;
-        bottom: 12px;
+        bottom: 16px;
         right: 12px;
         font-size: 12px;
         color: rgba(0, 0, 0, 0.3);
