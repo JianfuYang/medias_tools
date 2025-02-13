@@ -286,6 +286,8 @@ body {
     background-color: #f8f9fa;
     border-radius: 1rem;
     margin-top: 2rem;
+    overflow: auto;
+    min-height: 300px;
 }
 </style>
 {% endblock %}
@@ -456,6 +458,29 @@ body {
                         <div class="flex items-center">
                             <input type="checkbox" id="auto-split" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             <span class="ml-2 text-sm text-gray-600">自动将长文本分割成多张卡片</span>
+                        </div>
+                    </div>
+
+                    <!-- 在样式设置区域添加卡片大小设置 -->
+                    <div>
+                        <label class="input-label">卡片大小</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="custom-size" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-600">自定义大小</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2" id="size-inputs">
+                                <div>
+                                    <label class="text-xs text-gray-500">宽度 (px)</label>
+                                    <input type="number" id="card-width" value="800" min="200" max="2000" 
+                                        class="w-full border border-gray-300 rounded-lg p-2 disabled:bg-gray-100 disabled:text-gray-500" disabled>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">高度 (px)</label>
+                                    <input type="number" id="card-height" value="400" min="200" max="2000"
+                                        class="w-full border border-gray-300 rounded-lg p-2 disabled:bg-gray-100 disabled:text-gray-500" disabled>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -672,6 +697,7 @@ function loadExample(id) {
 // 更新预览
 function updatePreview() {
     const preview = document.getElementById('card-preview');
+    const previewContainer = document.querySelector('.preview-container');
     const selectedTemplate = document.querySelector('.template-option.selected');
     const isCustomTemplate = selectedTemplate.dataset.custom === 'true';
     const bgColorInput = document.getElementById('bg-color');
@@ -679,6 +705,44 @@ function updatePreview() {
     // 重置预览区域
     preview.innerHTML = '';
     preview.className = 'card-preview';
+    
+    // 创建内容并应用样式
+    // ... (其他内容创建代码保持不变)
+    
+    // 等待内容渲染完成后再获取实际尺寸
+    requestAnimationFrame(() => {
+        // 获取实际尺寸（包括内边距）
+        const computedStyle = window.getComputedStyle(preview);
+        const actualWidth = Math.round(preview.offsetWidth);
+        const actualHeight = Math.round(preview.offsetHeight);
+        
+        // 更新输入框显示的尺寸
+        const cardWidth = document.getElementById('card-width');
+        const cardHeight = document.getElementById('card-height');
+        
+        if (!customSizeCheckbox.checked) {
+            // 自动模式：显示实际尺寸
+            cardWidth.value = actualWidth;
+            cardHeight.value = actualHeight;
+        }
+        
+        // 更新预览容器尺寸
+        if (customSizeCheckbox.checked) {
+            // 自定义模式：使用输入的尺寸
+            const width = parseInt(cardWidth.value);
+            const height = parseInt(cardHeight.value);
+            preview.style.width = `${width}px`;
+            preview.style.height = `${height}px`;
+            previewContainer.style.minWidth = `${width + 80}px`;
+            previewContainer.style.minHeight = `${height + 80}px`;
+        } else {
+            // 自动模式：清除固定尺寸
+            preview.style.width = '';
+            preview.style.height = '';
+            previewContainer.style.minWidth = '';
+            previewContainer.style.minHeight = '300px';
+        }
+    });
     
     // 设置背景颜色和文字颜色
     if (isCustomTemplate) {
@@ -746,8 +810,16 @@ function updatePreview() {
     // 应用比例设置
     const ratio = document.getElementById('aspect-ratio').value;
     if (ratio !== 'auto') {
+        const baseWidth = 800;
         const [width, height] = ratio.split(':').map(Number);
-        preview.style.aspectRatio = `${width}/${height}`;
+        const calculatedHeight = Math.round((baseWidth * height) / width);
+        
+        preview.style.width = `${baseWidth}px`;
+        preview.style.height = `${calculatedHeight}px`;
+        
+        // 更新预览容器尺寸
+        previewContainer.style.minWidth = `${baseWidth + 80}px`;
+        previewContainer.style.minHeight = `${calculatedHeight + 80}px`;
     }
 
     // 将包装器添加到预览区域
@@ -833,17 +905,62 @@ bgColorInput.addEventListener('input', function() {
     updatePreview();
 });
 
-// 图片比例实时更新
+// 修改图片比例变化的事件处理
 document.getElementById('aspect-ratio').addEventListener('change', function() {
     const preview = document.getElementById('card-preview');
     const ratio = this.value;
+    const customSizeCheckbox = document.getElementById('custom-size');
+    const cardWidth = document.getElementById('card-width');
+    const cardHeight = document.getElementById('card-height');
+    const previewContainer = document.querySelector('.preview-container');
+    
+    // 获取预览区域的基准宽度
+    const baseWidth = 800;
+    
     if (ratio === 'auto') {
         preview.style.aspectRatio = 'auto';
+        preview.style.width = '';
+        preview.style.height = '';
+        previewContainer.style.minWidth = '';
+        previewContainer.style.minHeight = '300px';
+        
+        // 允许自定义大小
+        customSizeCheckbox.disabled = false;
+        customSizeCheckbox.parentElement.classList.remove('opacity-50');
     } else {
         const [width, height] = ratio.split(':').map(Number);
+        // 计算对应的高度
+        const calculatedHeight = Math.round((baseWidth * height) / width);
+        
+        // 立即应用尺寸
+        preview.style.width = `${baseWidth}px`;
+        preview.style.height = `${calculatedHeight}px`;
         preview.style.aspectRatio = `${width}/${height}`;
+        
+        // 立即更新预览容器尺寸
+        previewContainer.style.minWidth = `${baseWidth + 80}px`;
+        previewContainer.style.minHeight = `${calculatedHeight + 80}px`;
+        
+        // 立即更新尺寸输入框的值
+        cardWidth.value = baseWidth;
+        cardHeight.value = calculatedHeight;
+        
+        // 禁用自定义大小
+        customSizeCheckbox.checked = false;
+        customSizeCheckbox.disabled = true;
+        customSizeCheckbox.parentElement.classList.add('opacity-50');
+        // 禁用尺寸输入
+        cardWidth.disabled = true;
+        cardHeight.disabled = true;
     }
+    
+    // 立即更新预览
     updatePreview();
+    
+    // 确保比例应用后的内容布局正确
+    setTimeout(() => {
+        updatePreview();
+    }, 100);
 });
 
 // 监听自动分割开关
@@ -864,6 +981,113 @@ updatePreview();
 // 初始化时设置颜色值显示
 document.addEventListener('DOMContentLoaded', function() {
     colorValueDisplay.textContent = bgColorInput.value.toUpperCase();
+});
+
+// 监听文本输入，自动调整卡片大小
+const textInput = document.getElementById('text-input');
+textInput.addEventListener('input', function() {
+    if (!customSizeCheckbox.checked) {
+        // 只在非自定义大小模式下自动调整
+        const preview = document.getElementById('card-preview');
+        preview.style.width = '';
+        preview.style.height = '';
+    }
+    updatePreview();
+});
+
+// 自定义大小相关的事件处理
+const customSizeCheckbox = document.getElementById('custom-size');
+const sizeInputs = document.getElementById('size-inputs');
+const cardWidth = document.getElementById('card-width');
+const cardHeight = document.getElementById('card-height');
+
+// 监听自定义大小开关
+customSizeCheckbox.addEventListener('change', function() {
+    // 检查是否为自由比例
+    const aspectRatio = document.getElementById('aspect-ratio').value;
+    if (aspectRatio !== 'auto') {
+        this.checked = false;
+        return;
+    }
+    
+    cardWidth.disabled = !this.checked;
+    cardHeight.disabled = !this.checked;
+    
+    if (!this.checked) {
+        const preview = document.getElementById('card-preview');
+        preview.style.width = '';
+        preview.style.height = '';
+        
+        // 重置预览容器尺寸
+        const previewContainer = document.querySelector('.preview-container');
+        previewContainer.style.minWidth = '';
+        previewContainer.style.minHeight = '300px';
+    } else {
+        // 切换到自定义模式时，使用当前实际尺寸作为初始值
+        const actualWidth = Math.round(preview.offsetWidth);
+        const actualHeight = Math.round(preview.offsetHeight);
+        cardWidth.value = actualWidth;
+        cardHeight.value = actualHeight;
+        
+        // 立即应用这些尺寸
+        preview.style.width = `${actualWidth}px`;
+        preview.style.height = `${actualHeight}px`;
+        previewContainer.style.minWidth = `${actualWidth + 80}px`;
+        previewContainer.style.minHeight = `${actualHeight + 80}px`;
+    }
+    
+    updatePreview();
+});
+
+// 监听宽度输入
+cardWidth.addEventListener('input', function() {
+    if (!customSizeCheckbox.checked) return;
+    
+    const width = parseInt(this.value);
+    if (isNaN(width) || width < 200 || width > 2000) return;
+    
+    const preview = document.getElementById('card-preview');
+    const previewContainer = document.querySelector('.preview-container');
+    
+    // 应用新宽度
+    preview.style.width = `${width}px`;
+    previewContainer.style.minWidth = `${width + 80}px`;
+    
+    // 触发一次完整的预览更新
+    updatePreview();
+});
+
+// 监听高度输入
+cardHeight.addEventListener('input', function() {
+    if (!customSizeCheckbox.checked) return;
+    
+    const height = parseInt(this.value);
+    if (isNaN(height) || height < 200 || height > 2000) return;
+    
+    const preview = document.getElementById('card-preview');
+    const previewContainer = document.querySelector('.preview-container');
+    
+    // 应用新高度
+    preview.style.height = `${height}px`;
+    previewContainer.style.minHeight = `${height + 80}px`;
+    
+    // 触发一次完整的预览更新
+    updatePreview();
+});
+
+// 在页面加载时初始化状态
+document.addEventListener('DOMContentLoaded', function() {
+    // ... 其他初始化代码 ...
+    
+    // 初始化图片比例和自定义大小的联动状态
+    const aspectRatio = document.getElementById('aspect-ratio').value;
+    const customSizeCheckbox = document.getElementById('custom-size');
+    
+    if (aspectRatio !== 'auto') {
+        customSizeCheckbox.checked = false;
+        customSizeCheckbox.disabled = true;
+        customSizeCheckbox.parentElement.classList.add('opacity-50');
+    }
 });
 </script>
 {% endblock %} 
