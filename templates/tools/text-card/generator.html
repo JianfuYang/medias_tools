@@ -497,28 +497,32 @@ body {
                 </div>
             </div>
 
-            <!-- 导出按钮 -->
-            <div class="flex justify-center space-x-4 mt-8">
-                <button id="download-png" class="px-6 py-2.5 bg-primary-color text-white rounded-full hover:bg-hover-color transition-colors">
+            <!-- 导出按钮区域 -->
+            <div class="flex justify-center space-x-4 mt-6">
+                <button id="download-png" 
+                    class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center">
                     <span class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
                         导出为PNG
                     </span>
                 </button>
-                <button id="download-jpg" class="px-6 py-2.5 bg-primary-color text-white rounded-full hover:bg-hover-color transition-colors">
+                <button id="download-jpg"
+                    class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center">
                     <span class="flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
                         导出为JPG
                     </span>
                 </button>
             </div>
-
+            
             <!-- 导出提示 -->
-            <div class="text-center mt-4 text-sm text-secondary-text">
+            <div class="text-center mt-4 text-sm text-gray-500">
                 <p>提示：导出的图片将保持原始比例和质量</p>
             </div>
         </div>
@@ -533,27 +537,71 @@ function initPreview() {
     updatePreview();
 }
 
-// 工具函数：设置按钮加载状态
-function setButtonLoading(button, isLoading) {
-    if (!button) return;
-    button.disabled = isLoading;
-    const span = button.querySelector('span');
-    if (isLoading) {
-        span.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>`;
-    } else {
-        span.innerHTML = button.dataset.originalContent;
+// 修改导出图片函数
+async function exportToImage(format) {
+    const preview = document.getElementById('card-preview');
+    const button = document.getElementById(`download-${format}`);
+    
+    // 显示加载状态
+    showToast('正在生成图片...', 'info');
+    setButtonLoading(button, true);
+    
+    try {
+        // 创建canvas
+        const canvas = await html2canvas(preview, {
+            scale: 2, // 提高导出图片质量
+            useCORS: true, // 允许加载跨域图片
+            backgroundColor: format === 'jpg' ? '#FFFFFF' : null,
+            logging: false,
+            allowTaint: true,
+            foreignObjectRendering: true, // 添加这个选项以支持更好的渲染
+            onclone: function(clonedDoc) {
+                const clonedPreview = clonedDoc.getElementById('card-preview');
+                if (clonedPreview) {
+                    clonedPreview.style.transform = 'none';
+                    clonedPreview.style.margin = '0';
+                    clonedPreview.style.boxShadow = 'none';
+                }
+            }
+        });
+        
+        // 转换为Blob并下载
+        canvas.toBlob(function(blob) {
+            if (!blob) {
+                throw new Error('图片生成失败');
+            }
+            
+            // 生成文件名
+            const timestamp = new Date().getTime();
+            const filename = `text-card-${timestamp}.${format}`;
+            
+            // 使用FileSaver.js下载
+            saveAs(blob, filename);
+            
+            // 显示成功提示
+            showToast('导出成功！', 'success');
+            
+            // 恢复按钮状态
+            setButtonLoading(button, false);
+        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
+        
+    } catch (error) {
+        console.error('导出图片失败:', error);
+        showToast(`导出失败: ${error.message}`, 'error');
+        setButtonLoading(button, false);
     }
 }
 
-// 工具函数：显示提示消息
-function showToast(message, type = 'error') {
+// 修改提示消息函数
+function showToast(message, type = 'info') {
     const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
-        type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-    }`;
+    const bgColor = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500'
+    }[type] || 'bg-blue-500';
+    
+    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${bgColor} text-white`;
     toast.textContent = message;
     document.body.appendChild(toast);
     
@@ -561,79 +609,6 @@ function showToast(message, type = 'error') {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
-}
-
-// 导出为图片
-async function exportToImage(format) {
-    const button = document.getElementById(`download-${format}`);
-    if (!button.dataset.originalContent) {
-        button.dataset.originalContent = button.querySelector('span').innerHTML;
-    }
-    
-    setButtonLoading(button, true);
-    
-    try {
-        const preview = document.getElementById('card-preview');
-        const ratio = document.getElementById('aspect-ratio').value;
-        
-        // 保存原始样式
-        const originalStyle = {
-            width: preview.style.width,
-            height: preview.style.height,
-            aspectRatio: preview.style.aspectRatio
-        };
-        
-        // 设置预览区域的比例
-        if (ratio !== 'auto') {
-            const [width, height] = ratio.split(':').map(Number);
-            const baseSize = 1200; // 基础尺寸
-            if (width > height) {
-                preview.style.width = `${baseSize}px`;
-                preview.style.height = `${(baseSize * height) / width}px`;
-            } else {
-                preview.style.height = `${baseSize}px`;
-                preview.style.width = `${(baseSize * width) / height}px`;
-            }
-            preview.style.aspectRatio = `${width}/${height}`;
-        }
-        
-        // 创建canvas
-        const canvas = await html2canvas(preview, {
-            scale: 2, // 提高清晰度
-            useCORS: true,
-            backgroundColor: format === 'jpg' ? '#FFFFFF' : null,
-            logging: false,
-            allowTaint: true,
-            foreignObjectRendering: true,
-            onclone: function(clonedDoc) {
-                const clonedPreview = clonedDoc.getElementById('card-preview');
-                clonedPreview.style.transform = 'none';
-                clonedPreview.style.boxShadow = 'none';
-            }
-        });
-        
-        // 转换为blob
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                showToast('导出失败，请重试');
-                return;
-            }
-            
-            // 下载文件
-            const timestamp = new Date().getTime();
-            const filename = `text-card-${timestamp}.${format}`;
-            saveAs(blob, filename);
-            showToast('导出成功！', 'success');
-        }, `image/${format}`, format === 'jpg' ? 0.92 : 1);
-        
-    } catch (error) {
-        console.error('Export error:', error);
-        showToast('导出失败：' + error.message);
-    } finally {
-        setButtonLoading(button, false);
-        // 恢复预览区域的原始样式
-        Object.assign(preview.style, originalStyle);
-    }
 }
 
 // 自动分割长文本
