@@ -164,11 +164,20 @@ async def not_found(request: Request, exc):
 # main
 
 if __name__ == "__main__":
+    # 确保必要的目录存在
+    for dir_path in [VIDEOS_DIR, BATCH_VIDEOS_DIR, STATIC_DIR]:
+        os.makedirs(dir_path, exist_ok=True)
+    
+    # 检查 ffmpeg 是否安装
+    if not check_ffmpeg():
+        print("警告: 未检测到 ffmpeg,视频处理功能可能受限")
+    
+    # 启动服务器,指定端口为8089,仅允许本地访问
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="debug",
-        access_log=True
+        host="127.0.0.1",  # 只允许本地访问
+        port=8089,         # 指定端口为8089
+        reload=True,       # 开发模式下启用热重载
+        workers=4,         # 指定工作进程数
+        log_level="info"   # 设置日志级别
     ) 
