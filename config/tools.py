@@ -166,20 +166,24 @@ TOOLS_CONFIG = {
         ],
         'progress': 100
     },
-    'content_diff': {
-        'name': '内容比较器',
+    'content-diff': {
+        'name': '代码比较器',
         'features': [
             {
-                'title': '文本对比',
-                'desc': '快速识别两段文本的差异'
+                'title': '多语言支持',
+                'desc': '支持多种编程语言的语法高亮'
             },
             {
-                'title': '格式化显示',
-                'desc': '清晰展示修改内容'
+                'title': '实时对比',
+                'desc': '输入时自动更新差异'
             },
             {
-                'title': '高亮标注',
-                'desc': '突出显示不同之处'
+                'title': '智能对比',
+                'desc': '支持忽略大小写和空格'
+            },
+            {
+                'title': '差异高亮',
+                'desc': '清晰展示代码修改内容'
             }
         ],
         'progress': 100

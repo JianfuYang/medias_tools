@@ -1,0 +1,177 @@
+{% extends "common/base.html" %}
+
+{% block title %}代码比较器 - 在线代码对比工具{% endblock %}
+
+{% block head %}
+<!-- 引入 Monaco Editor -->
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.css">
+<script>var require = { paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs' } };</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.nls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.js"></script>
+
+<!-- 引入 diff 库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch_uncompressed.js"></script>
+
+<style>
+.editor-container {
+    height: calc(100vh - 200px);
+    min-height: 400px;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    position: relative;
+    overflow: hidden;
+}
+
+.editor-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.diff-container {
+    height: calc(100vh - 200px);
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+}
+.diff-line {
+    display: flex;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.diff-line-number {
+    width: 4rem;
+    padding: 0 0.5rem;
+    text-align: right;
+    color: #6b7280;
+    user-select: none;
+    background: #f9fafb;
+    border-right: 1px solid #e5e7eb;
+}
+.diff-line-content {
+    flex: 1;
+    padding: 0 0.5rem;
+    white-space: pre;
+}
+.diff-added {
+    background-color: #d1fae5;
+    border-left: 4px solid #059669;
+}
+.diff-removed {
+    background-color: #fee2e2;
+    border-left: 4px solid #dc2626;
+}
+.diff-unchanged {
+    background-color: #ffffff;
+}
+.diff-shadow {
+    background-color: rgba(0,0,0,0.02);
+}
+.toolbar {
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.toolbar-button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.toolbar-button:hover {
+    background: #f3f4f6;
+}
+.toolbar-button.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #2563eb;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-4">
+    <div class="mb-4">
+        <h1 class="text-2xl font-bold text-gray-900">代码比较器</h1>
+        <p class="text-gray-600">支持多种编程语言的代码对比,快速识别代码差异</p>
+    </div>
+
+    <div class="toolbar flex justify-between items-center">
+        <div class="toolbar-group">
+            <select id="language" class="form-select rounded-md border-gray-300">
+                <option value="plaintext">纯文本</option>
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="csharp">C#</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="json">JSON</option>
+                <option value="xml">XML</option>
+                <option value="sql">SQL</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="showDiff" class="form-checkbox" checked>
+                <span class="ml-2">显示差异</span>
+            </label>
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="showLineNumber" class="form-checkbox" checked>
+                <span class="ml-2">显示行号</span>
+            </label>
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="ignoreCase" class="form-checkbox">
+                <span class="ml-2">忽略大小写</span>
+            </label>
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="ignoreSpace" class="form-checkbox">
+                <span class="ml-2">忽略空格</span>
+            </label>
+        </div>
+        <div class="toolbar-group">
+            <button id="compareBtn" class="toolbar-button bg-blue-600 text-white hover:bg-blue-700">开始对比</button>
+            <button id="clearBtn" class="toolbar-button">清空内容</button>
+        </div>
+    </div>
+
+    <div class="text-sm text-gray-500 mt-2 mb-4">
+        快捷键: 
+        <span class="bg-gray-100 px-2 py-1 rounded">Ctrl/⌘ + Enter</span> 开始对比, 
+        <span class="bg-gray-100 px-2 py-1 rounded">Ctrl/⌘ + L</span> 清空内容
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mt-4">
+        <div>
+            <div class="editor-container" id="editor1"></div>
+        </div>
+        <div>
+            <div class="editor-container" id="editor2"></div>
+        </div>
+    </div>
+
+    <div id="diffView" class="mt-4 hidden">
+        <div class="diff-container" id="diffResult"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/tools/content-diff/diff.js') }}"></script>
+{% endblock %}

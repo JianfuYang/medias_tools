@@ -21,6 +21,7 @@ from modules.image_format import router as format_router
 from modules.svg_editor.routes import router as svg_editor_router
 from modules.text_card.routes import router as text_card_router
 from modules.qrcode import router as qrcode_router
+from modules.content_diff.routes import router as content_diff_router
 
 # 配置日志
 logging.basicConfig(
@@ -111,6 +112,13 @@ app.include_router(
     tags=["qrcode"]
 )
 
+# 注册内容比较器路由
+app.include_router(
+    content_diff_router,
+    prefix="/tools/content-diff",
+    tags=["content-diff"]
+)
+
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
 async def tool_page(request: Request, tool_id: str):
@@ -152,6 +160,8 @@ async def not_found(request: Request, exc):
         },
         status_code=404
     )
+
+# main
 
 if __name__ == "__main__":
     uvicorn.run(
