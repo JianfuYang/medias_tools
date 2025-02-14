@@ -165,5 +165,23 @@ TOOLS_CONFIG = {
             }
         ],
         'progress': 100
+    },
+    'content_diff': {
+        'name': '内容比较器',
+        'features': [
+            {
+                'title': '文本对比',
+                'desc': '快速识别两段文本的差异'
+            },
+            {
+                'title': '格式化显示',
+                'desc': '清晰展示修改内容'
+            },
+            {
+                'title': '高亮标注',
+                'desc': '突出显示不同之处'
+            }
+        ],
+        'progress': 100
     }
 } 
