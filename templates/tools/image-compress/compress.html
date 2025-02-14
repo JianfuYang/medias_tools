@@ -172,17 +172,17 @@
                 </div>
                 <p class="text-xs text-gray-500 mt-2">支持 PNG、JPG、JPEG、WebP 格式</p>
                 <div id="file-list" class="mt-4 w-full"></div>
-            </div>
+        </div>
 
             <!-- 右侧配置区域 -->
             <div class="space-y-6">
-                <div class="space-y-4">
+            <div class="space-y-4">
                     <!-- 质量设置 -->
-                    <div>
+                <div>
                         <label for="quality" class="block text-sm font-medium text-gray-700">压缩质量</label>
                         <div class="mt-1">
                             <input type="range" id="quality" name="quality" min="0" max="100" value="80" 
-                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             <span class="text-sm text-gray-600" id="quality-value">80%</span>
                         </div>
                     </div>
@@ -193,10 +193,10 @@
                         <input type="number" id="max-width" name="max-width" 
                                class="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                                placeholder="可选，限制图片最大宽度">
-                    </div>
+                </div>
 
                     <!-- 保持EXIF信息 -->
-                    <div class="flex items-center">
+                <div class="flex items-center">
                         <input type="checkbox" id="keep-exif" name="keep-exif"
                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="keep-exif" class="ml-2 block text-sm text-gray-900">
@@ -218,10 +218,10 @@
             <div class="flex justify-between text-sm text-gray-600 mb-2">
                 <span>压缩进度</span>
                 <span id="progress-text">0%</span>
-            </div>
+    </div>
             <div class="w-full bg-gray-200 rounded-full h-2.5">
                 <div id="progress" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
-            </div>
+</div>
         </div>
 
         <!-- 结果预览区域 -->

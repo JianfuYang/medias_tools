@@ -1,0 +1,490 @@
+{% extends "common/base.html" %}
+
+{% block title %}二维码生成器 - 媒体效率工具库{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- 修改 QRCode.js 引入 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- 引入 JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+.qr-preview {
+    width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tab-button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.tab-active {
+    background-color: #3B82F6;
+    color: white;
+}
+
+.logo-preview {
+    max-width: 100px;
+    max-height: 100px;
+    object-fit: contain;
+}
+
+#qr-container {
+    width: 400px;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-description-text {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 20px;
+    color: #1F2937;
+    margin-top: 20px;
+    padding: 0 10px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    max-width: 380px;
+    word-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 60px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- 标题区域 -->
+    <div class="text-center mb-12">
+        <h1 class="text-3xl font-bold text-gray-900">二维码生成器</h1>
+        <p class="mt-4 text-lg text-gray-600">
+            快速生成网址二维码，支持单个/批量生成
+        </p>
+    </div>
+
+    <!-- 模式切换 -->
+    <div class="flex justify-center space-x-4 mb-12">
+        <button id="single-mode" class="tab-button tab-active">
+            单个链接生成
+        </button>
+        <button id="batch-mode" class="tab-button text-gray-600 hover:bg-gray-100">
+            批量链接生成
+        </button>
+    </div>
+
+    <!-- 单个链接模式 -->
+    <div id="single-mode-content" class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <!-- 左侧设置区域 -->
+        <div class="space-y-8 bg-white p-8 rounded-xl shadow-sm">
+            <!-- URL输入 -->
+            <div class="space-y-2">
+                <label class="block text-lg font-medium text-gray-700">输入网址</label>
+                <input type="url" id="url-input" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    placeholder="请输入以http://或https://开头的网址">
+                <p class="text-sm text-gray-500">提示：输入网址后点击生成按钮</p>
+            </div>
+
+            <!-- 添加二维码说明输入 -->
+            <div class="space-y-2">
+                <label class="block text-lg font-medium text-gray-700">二维码说明</label>
+                <input type="text" id="qr-description" maxlength="20"
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    placeholder="请输入二维码说明(选填,最多20字)">
+                <p class="text-sm text-gray-500">
+                    <span id="description-length">0</span>/20字
+                </p>
+            </div>
+
+            <!-- Logo设置 -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-medium text-gray-700">Logo设置</h3>
+                <div class="flex items-start space-x-4">
+                    <div class="flex-1">
+                        <input type="file" id="logo-input" accept="image/*"
+                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <p class="mt-2 text-sm text-gray-500">支持PNG、JPG格式，尺寸需小于等于300x300</p>
+                    </div>
+                    <div id="logo-preview-container" class="hidden">
+                        <img id="logo-preview" class="logo-preview border rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 生成按钮 -->
+            <div class="pt-4">
+                <button id="generate-btn" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                    生成二维码
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧预览和下载区域 -->
+        <div class="space-y-8">
+            <!-- 预览区域 -->
+            <div class="qr-preview">
+                <div id="qr-container">
+                    <!-- 二维码将在这里生成 -->
+                </div>
+                <div id="qr-description-preview" class="qr-description-text">
+                    <!-- 说明文字将在这里显示 -->
+                </div>
+            </div>
+
+            <!-- 下载按钮 -->
+            <div class="flex justify-center">
+                <button id="download-png" class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
+                    下载二维码
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量生成模式 -->
+    <div id="batch-mode-content" class="hidden">
+        <!-- 批量上传区域 -->
+        <div class="max-w-3xl mx-auto">
+            <div class="bg-white p-8 rounded-xl shadow-sm">
+                <div class="space-y-6">
+                    <!-- 文件上传区域 -->
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-500 transition-colors">
+                        <input type="file" id="batch-file-input" accept=".txt,.csv" class="hidden">
+                        <div class="space-y-4">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m0 0v4a4 4 0 004 4h20a4 4 0 004-4V28m0 0V12a4 4 0 00-4-4h-4m4 20H8m24 0l-3-3m3 3l-3 3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div>
+                                <button type="button" onclick="document.getElementById('batch-file-input').click()" 
+                                    class="text-blue-600 hover:text-blue-700 font-medium">
+                                    选择文件
+                                </button>
+                                <span class="text-gray-500">或拖拽文件到这里</span>
+                            </div>
+                            <p class="text-sm text-gray-500">支持TXT、CSV格式，每行一个网址</p>
+                        </div>
+                    </div>
+
+                    <!-- 批量预览区域 -->
+                    <div id="batch-preview" class="hidden space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-medium text-gray-700">已导入 <span id="url-count" class="text-blue-600">0</span> 个网址</span>
+                            <button id="generate-all" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                                生成全部
+                            </button>
+                        </div>
+                        <div id="url-list" class="max-h-60 overflow-y-auto space-y-2 bg-gray-50 rounded-lg p-4">
+                            <!-- URL列表将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let qrcode = null;
+let currentMode = 'single';
+let batchUrls = [];
+
+// 检查 QRCode 是否正确加载
+function checkQRCodeLoaded() {
+    if (typeof QRCode === 'undefined') {
+        alert('二维码生成组件加载失败，请刷新页面重试');
+        return false;
+    }
+    return true;
+}
+
+// 切换模式
+function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('tab-active');
+    });
+    document.getElementById(`${mode}-mode`).classList.add('tab-active');
+    
+    document.getElementById('single-mode-content').style.display = mode === 'single' ? 'grid' : 'none';
+    document.getElementById('batch-mode-content').style.display = mode === 'batch' ? 'block' : 'none';
+    
+    // 清除已有的二维码
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+    qrcode = null;
+}
+
+// 修改生成二维码函数
+async function generateQRCode() {
+    if (!checkQRCodeLoaded()) {
+        return;
+    }
+
+    const url = document.getElementById('url-input').value.trim();
+    
+    if (!url) {
+        alert('请输入网址');
+        return;
+    }
+    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('请输入以http://或https://开头的有效网址');
+        return;
+    }
+    
+    // 清除旧的二维码
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+    if (qrcode) {
+        qrcode.clear();
+        qrcode = null;
+    }
+    
+    try {
+        // 创建新的二维码并等待渲染完成
+        await new Promise((resolve) => {
+            qrcode = new QRCode(container, {
+                text: url,
+                width: 400,
+                height: 400,
+                colorDark: "#000000",
+                colorLight: "#FFFFFF",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            // 监听二维码图片加载完成
+            const qrImage = container.querySelector('img');
+            if (qrImage) {
+                qrImage.onload = resolve;
+            } else {
+                setTimeout(resolve, 500); // 备用方案
+            }
+        });
+
+        // 添加Logo（如果有）
+        const logoImg = document.getElementById('logo-preview');
+        if (logoImg && !logoImg.classList.contains('hidden')) {
+            const canvas = container.querySelector('canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                
+                // 计算 Logo 的等比例缩放尺寸
+                const maxLogoSize = canvas.width / 4; // 二维码宽度的1/4
+                let logoWidth = logoImg.naturalWidth;
+                let logoHeight = logoImg.naturalHeight;
+                
+                // 计算缩放比例
+                const scale = Math.min(
+                    maxLogoSize / logoWidth,
+                    maxLogoSize / logoHeight
+                );
+                
+                // 应用缩放
+                logoWidth *= scale;
+                logoHeight *= scale;
+                
+                // 计算居中位置
+                const x = (canvas.width - logoWidth) / 2;
+                const y = (canvas.height - logoHeight) / 2;
+                
+                // 添加白色背景，稍大于logo
+                const padding = 6;
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(
+                    x - padding,
+                    y - padding,
+                    logoWidth + padding * 2,
+                    logoHeight + padding * 2
+                );
+                
+                // 绘制logo
+                ctx.drawImage(logoImg, x, y, logoWidth, logoHeight);
+
+                // 更新二维码图片显示
+                const qrImage = container.querySelector('img');
+                if (qrImage) {
+                    qrImage.src = canvas.toDataURL('image/png');
+                }
+            }
+        }
+        
+        // 显示说明文字
+        const description = document.getElementById('qr-description').value;
+        const previewElement = document.getElementById('qr-description-preview');
+        previewElement.textContent = description;
+        if (!description) {
+            previewElement.style.minHeight = '60px';
+        }
+        
+    } catch (error) {
+        console.error('生成二维码失败:', error);
+        alert('生成二维码失败，请重试');
+    }
+}
+
+// 修改 Logo 上传处理
+document.getElementById('logo-input').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            alert('请上传图片文件');
+            return;
+        }
+        
+        try {
+            const img = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = URL.createObjectURL(file);
+            });
+
+            if (img.width > 300 || img.height > 300) {
+                alert('Logo尺寸过大，请上传不超过300x300的图片');
+                return;
+            }
+            
+            const preview = document.getElementById('logo-preview');
+            preview.src = img.src;
+            document.getElementById('logo-preview-container').classList.remove('hidden');
+            
+            // 重新生成带Logo的二维码
+            if (qrcode) {
+                await generateQRCode();
+            }
+        } catch (error) {
+            console.error('处理Logo失败:', error);
+            alert('处理Logo失败，请重试');
+        }
+    }
+});
+
+// 修改说明文字输入监听
+document.getElementById('qr-description').addEventListener('input', function(e) {
+    const length = e.target.value.length;
+    document.getElementById('description-length').textContent = length;
+    
+    // 更新预览文字
+    const previewElement = document.getElementById('qr-description-preview');
+    previewElement.textContent = e.target.value;
+    
+    // 如果文字为空，添加占位高度
+    if (!e.target.value) {
+        previewElement.style.minHeight = '60px';
+    }
+});
+
+// 模式切换事件
+document.getElementById('single-mode').addEventListener('click', () => switchMode('single'));
+document.getElementById('batch-mode').addEventListener('click', () => switchMode('batch'));
+
+// 修改生成按钮事件为异步
+document.getElementById('generate-btn').addEventListener('click', () => generateQRCode());
+
+// 修改下载按钮事件
+document.getElementById('download-png').addEventListener('click', () => {
+    const canvas = document.querySelector('#qr-container canvas');
+    if (!canvas) {
+        alert('请先生成二维码');
+        return;
+    }
+    
+    try {
+        const tempCanvas = document.createElement('canvas');
+        const description = document.getElementById('qr-description').value;
+        const padding = description ? 100 : 0; // 增加padding，确保两行文字有足够空间
+        
+        tempCanvas.width = 400;
+        tempCanvas.height = 400 + padding;
+        const ctx = tempCanvas.getContext('2d');
+        
+        // 填充白色背景
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // 绘制二维码
+        ctx.drawImage(canvas, 0, 0);
+        
+        // 如果有说明文字，添加到底部
+        if (description) {
+            ctx.font = 'bold 20px "PingFang SC", "Microsoft YaHei", sans-serif';
+            ctx.fillStyle = '#1F2937';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 文字自动换行处理
+            const maxWidth = 380; // 最大宽度
+            const words = description.split('');
+            let line = '';
+            let lines = [];
+            
+            // 计算文字分行
+            for (let i = 0; i < words.length; i++) {
+                const testLine = line + words[i];
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxWidth && i > 0) {
+                    lines.push(line);
+                    line = words[i];
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+            
+            // 限制最多显示两行
+            if (lines.length > 2) {
+                lines = lines.slice(0, 2);
+                lines[1] = lines[1].slice(0, -2) + '...';
+            }
+            
+            // 绘制文字
+            const lineHeight = 28;
+            const startY = 400 + (padding - (lines.length * lineHeight)) / 2;
+            
+            lines.forEach((line, index) => {
+                ctx.fillText(line, tempCanvas.width / 2, startY + (index * lineHeight));
+            });
+        }
+        
+        // 下载合成后的图片
+        const link = document.createElement('a');
+        link.download = 'qrcode.png';
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+    } catch (error) {
+        console.error('下载失败:', error);
+        alert('下载失败，请重试');
+    }
+});
+
+// 修改URL输入框回车事件为异步
+document.getElementById('url-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        generateQRCode();
+    }
+});
+
+// 初始化时检查组件是否加载
+window.addEventListener('load', () => {
+    if (checkQRCodeLoaded()) {
+        switchMode('single');
+    }
+});
+</script>
+{% endblock %} 

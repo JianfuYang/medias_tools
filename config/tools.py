@@ -112,23 +112,23 @@ TOOLS_CONFIG = {
         ],
         'progress': 30
     },
-    'svg-to-ppt': {
-        'name': 'SVG to PPT',
+    'qrcode': {
+        'name': '二维码生成器',
         'features': [
             {
-                'title': '一键转换',
-                'desc': '将SVG快速转换为PPT可编辑元素'
+                'title': '快速生成',
+                'desc': '一键生成网址二维码'
             },
             {
-                'title': '样式保持',
-                'desc': '完整保留SVG样式和动画效果'
+                'title': '自定义样式',
+                'desc': '支持自定义颜色和Logo'
             },
             {
-                'title': '批量导入',
-                'desc': '支持批量SVG导入PPT模板'
+                'title': '批量生成',
+                'desc': '支持批量生成二维码'
             }
         ],
-        'progress': 40
+        'progress': 100
     },
     'logo-design': {
         'name': '极简Logo设计',

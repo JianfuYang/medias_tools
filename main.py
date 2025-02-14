@@ -20,6 +20,7 @@ from modules.image_resize import router as resize_router
 from modules.image_format import router as format_router
 from modules.svg_editor.routes import router as svg_editor_router
 from modules.text_card.routes import router as text_card_router
+from modules.qrcode import router as qrcode_router
 
 # 配置日志
 logging.basicConfig(
@@ -103,6 +104,13 @@ app.include_router(
     tags=["text"]
 )
 
+# 注册二维码生成器模块路由
+app.include_router(
+    qrcode_router,
+    prefix="/tools/qrcode",
+    tags=["qrcode"]
+)
+
 # 工具路由 - 处理其他工具的待开发页面
 @app.get("/tools/{tool_id}")
 async def tool_page(request: Request, tool_id: str):
@@ -116,7 +124,7 @@ async def tool_page(request: Request, tool_id: str):
         )
     
     # 如果是已完成的工具，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor', 'text-card']:
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor', 'text-card','qrcode']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面
@@ -124,7 +132,7 @@ async def tool_page(request: Request, tool_id: str):
     return templates.TemplateResponse(
         "common/developing.html",
         {
-            "request": request,
+            "request": request, 
             "current_tool": f"/tools/{tool_id}",
             "tool_name": tool_config["name"],
             "features": tool_config["features"],
@@ -136,10 +144,10 @@ async def tool_page(request: Request, tool_id: str):
 # 404错误处理
 @app.exception_handler(404)
 async def not_found(request: Request, exc):
-    return templates.TemplateResponse(
+        return templates.TemplateResponse(
         "common/404.html",
-        {
-            "request": request,
+            {
+                "request": request,
             "current_tool": None
         },
         status_code=404
@@ -153,4 +161,4 @@ if __name__ == "__main__":
         reload=True,
         log_level="debug",
         access_log=True
-    )
+    ) 
