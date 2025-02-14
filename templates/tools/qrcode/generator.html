@@ -58,13 +58,20 @@
     line-height: 1.5;
     text-align: center;
     max-width: 380px;
-    word-wrap: break-word;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
     min-height: 60px;
+    display: block;
+    max-height: 3em;
+    overflow: hidden;
+    position: relative;
+}
+
+.qr-description-text.truncated::after {
+    content: '...';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding-left: 40px;
+    background: linear-gradient(to right, transparent, white 50%);
 }
 </style>
 {% endblock %}
@@ -118,9 +125,9 @@
                 <h3 class="text-lg font-medium text-gray-700">Logo设置</h3>
                 <div class="flex items-start space-x-4">
                     <div class="flex-1">
-                        <input type="file" id="logo-input" accept="image/*"
+                        <input type="file" id="logo-input" accept="image/*, image/svg+xml"
                             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <p class="mt-2 text-sm text-gray-500">支持PNG、JPG格式，尺寸需小于等于300x300</p>
+                        <p class="mt-2 text-sm text-gray-500">支持PNG、JPG、SVG格式，尺寸需小于等于300x300</p>
                     </div>
                     <div id="logo-preview-container" class="hidden">
                         <img id="logo-preview" class="logo-preview border rounded-lg">
@@ -284,10 +291,19 @@ async function generateQRCode() {
             if (canvas) {
                 const ctx = canvas.getContext('2d');
                 
+                // 等待Logo图片完全加载
+                await new Promise((resolve) => {
+                    if (logoImg.complete) {
+                        resolve();
+                    } else {
+                        logoImg.onload = resolve;
+                    }
+                });
+                
                 // 计算 Logo 的等比例缩放尺寸
                 const maxLogoSize = canvas.width / 4; // 二维码宽度的1/4
-                let logoWidth = logoImg.naturalWidth;
-                let logoHeight = logoImg.naturalHeight;
+                let logoWidth = logoImg.naturalWidth || logoImg.width;
+                let logoHeight = logoImg.naturalHeight || logoImg.height;
                 
                 // 计算缩放比例
                 const scale = Math.min(
@@ -328,8 +344,17 @@ async function generateQRCode() {
         const description = document.getElementById('qr-description').value;
         const previewElement = document.getElementById('qr-description-preview');
         previewElement.textContent = description;
+        
+        // 检查是否需要截断
+        if (previewElement.scrollHeight > previewElement.clientHeight) {
+            previewElement.classList.add('truncated');
+        } else {
+            previewElement.classList.remove('truncated');
+        }
+        
         if (!description) {
             previewElement.style.minHeight = '60px';
+            previewElement.classList.remove('truncated');
         }
         
     } catch (error) {
@@ -341,13 +366,51 @@ async function generateQRCode() {
 // 修改 Logo 上传处理
 document.getElementById('logo-input').addEventListener('change', async function(e) {
     const file = e.target.files[0];
-    if (file) {
-        if (!file.type.startsWith('image/')) {
-            alert('请上传图片文件');
-            return;
-        }
-        
-        try {
+    if (!file) return;
+
+    // 检查文件类型
+    const validTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+        alert('请上传PNG、JPG或SVG格式的图片');
+        return;
+    }
+
+    try {
+        // 处理SVG和其他图片格式
+        if (file.type === 'image/svg+xml') {
+            // 读取SVG文件内容
+            const svgText = await file.text();
+            // 创建一个临时的SVG元素来获取尺寸
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            const svgElement = svgDoc.documentElement;
+            
+            // 获取SVG尺寸
+            let width = parseInt(svgElement.getAttribute('width')) || 0;
+            let height = parseInt(svgElement.getAttribute('height')) || 0;
+            
+            // 如果SVG没有明确的尺寸，尝试从viewBox获取
+            if (!width || !height) {
+                const viewBox = svgElement.getAttribute('viewBox');
+                if (viewBox) {
+                    const [, , vbWidth, vbHeight] = viewBox.split(' ').map(Number);
+                    width = vbWidth;
+                    height = vbHeight;
+                }
+            }
+            
+            // 检查尺寸
+            if (width > 300 || height > 300) {
+                alert('Logo尺寸过大，请上传不超过300x300的图片');
+                return;
+            }
+
+            // 创建预览
+            const preview = document.getElementById('logo-preview');
+            preview.src = URL.createObjectURL(file);
+            document.getElementById('logo-preview-container').classList.remove('hidden');
+        } else {
+            // 处理普通图片格式
             const img = await new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => resolve(img);
@@ -363,15 +426,15 @@ document.getElementById('logo-input').addEventListener('change', async function(
             const preview = document.getElementById('logo-preview');
             preview.src = img.src;
             document.getElementById('logo-preview-container').classList.remove('hidden');
-            
-            // 重新生成带Logo的二维码
-            if (qrcode) {
-                await generateQRCode();
-            }
-        } catch (error) {
-            console.error('处理Logo失败:', error);
-            alert('处理Logo失败，请重试');
         }
+
+        // 重新生成带Logo的二维码
+        if (qrcode) {
+            await generateQRCode();
+        }
+    } catch (error) {
+        console.error('处理Logo失败:', error);
+        alert('处理Logo失败，请重试');
     }
 });
 
@@ -384,9 +447,17 @@ document.getElementById('qr-description').addEventListener('input', function(e) 
     const previewElement = document.getElementById('qr-description-preview');
     previewElement.textContent = e.target.value;
     
+    // 检查是否需要截断
+    if (previewElement.scrollHeight > previewElement.clientHeight) {
+        previewElement.classList.add('truncated');
+    } else {
+        previewElement.classList.remove('truncated');
+    }
+    
     // 如果文字为空，添加占位高度
     if (!e.target.value) {
         previewElement.style.minHeight = '60px';
+        previewElement.classList.remove('truncated');
     }
 });
 
