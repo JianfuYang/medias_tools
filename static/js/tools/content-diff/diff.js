@@ -2,30 +2,72 @@ class CodeDiffTool {
     constructor() {
         this.editor1 = null;
         this.editor2 = null;
-        this.init();
+        this.dmp = null;
+    }
+
+    static async create() {
+        const instance = new CodeDiffTool();
+        await instance.init();
+        return instance;
     }
 
     async init() {
         try {
-            // 显示加载状态
             this.showLoading();
             
-            // 等待 Monaco 编辑器加载
+            // 确保 diff_match_patch 已加载
+            if (typeof window.diff_match_patch === 'undefined') {
+                await new Promise((resolve) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch_uncompressed.js';
+                    script.onload = resolve;
+                    document.head.appendChild(script);
+                });
+            }
+
+            // 初始化 diff_match_patch
+            this.dmp = new diff_match_patch();
+            this.dmp.Diff_Timeout = 1;
+            this.dmp.Diff_EditCost = 4;
+
+            // 等待 Monaco Editor 加载
             await this.waitForMonaco();
             
-            // 初始化编辑器
             await this.initEditors();
-            
-            // 初始化其他元素
             this.initElements();
             this.bindEvents();
             
-            // 移除加载状态
             this.hideLoading();
         } catch (error) {
             console.error('初始化失败:', error);
-            this.showError('工具初始化失败，请刷新页面重试。');
+            this.showError('工具初始化失败：' + error.message);
         }
+    }
+
+    async waitForMonaco() {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 100;
+            
+            const checkMonaco = () => {
+                attempts++;
+                if (window.monaco && window.monaco.editor) {
+                    resolve();
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error('编辑器加载超时，请检查网络连接'));
+                } else {
+                    setTimeout(checkMonaco, 100);
+                }
+            };
+            
+            if (window.require) {
+                require(['vs/editor/editor.main'], () => {
+                    resolve();
+                });
+            } else {
+                checkMonaco();
+            }
+        });
     }
 
     showLoading() {
@@ -42,130 +84,134 @@ class CodeDiffTool {
         document.querySelectorAll('.editor-loading').forEach(el => el.remove());
     }
 
-    async waitForMonaco() {
-        return new Promise((resolve, reject) => {
-            let attempts = 0;
-            const maxAttempts = 50; // 5秒超时
+    async initEditors() {
+        try {
+            // 确保容器存在
+            const container1 = document.getElementById('editor1');
+            const container2 = document.getElementById('editor2');
             
-            const checkMonaco = () => {
-                attempts++;
-                if (window.monaco) {
-                    resolve();
-                } else if (attempts >= maxAttempts) {
-                    reject(new Error('Monaco Editor 加载超时'));
-                } else {
-                    setTimeout(checkMonaco, 100);
+            if (!container1 || !container2) {
+                throw new Error('找不到编辑器容器');
+            }
+
+            const editorConfig = {
+                language: 'plaintext',
+                theme: 'vs',
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                fontSize: 14,
+                lineNumbers: 'on',
+                renderWhitespace: 'all',
+                tabSize: 4,
+                wordWrap: 'on',
+                autoIndent: 'advanced',
+                formatOnType: true,
+                formatOnPaste: true,
+                quickSuggestions: true,
+                contextmenu: true,
+                readOnly: false,
+                bracketPairColorization: true,
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                scrollbar: {
+                    verticalScrollbarSize: 12,
+                    horizontalScrollbarSize: 12,
+                    alwaysConsumeMouseWheel: false
                 }
             };
-            
-            checkMonaco();
-        });
-    }
 
-    async initEditors() {
-        // 确保容器存在
-        const container1 = document.getElementById('editor1');
-        const container2 = document.getElementById('editor2');
-        
-        if (!container1 || !container2) {
-            throw new Error('找不到编辑器容器');
-        }
-
-        const editorConfig = {
-            language: 'plaintext',
-            theme: 'vs',
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            fontSize: 14,
-            lineNumbers: 'on',
-            renderWhitespace: 'all',
-            tabSize: 4,
-            wordWrap: 'on',
-            autoIndent: 'advanced',
-            formatOnType: true,
-            formatOnPaste: true,
-            quickSuggestions: true,
-            contextmenu: true,
-            readOnly: false,
-            bracketPairColorization: true,
-            autoClosingBrackets: 'always',
-            autoClosingQuotes: 'always',
-            scrollbar: {
-                verticalScrollbarSize: 12,
-                horizontalScrollbarSize: 12,
-                alwaysConsumeMouseWheel: false
+            // 确保 monaco 对象存在
+            if (!window.monaco || !window.monaco.editor) {
+                throw new Error('Monaco Editor 未正确加载');
             }
-        };
 
-        // 创建编辑器实例前先清空容器
-        container1.innerHTML = '';
-        container2.innerHTML = '';
+            // 创建编辑器实例前先清空容器
+            container1.innerHTML = '';
+            container2.innerHTML = '';
 
-        // 创建编辑器实例
-        this.editor1 = monaco.editor.create(container1, {
-            ...editorConfig,
-            value: '// 在此输入原始代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码'
-        });
+            // 创建编辑器实例
+            this.editor1 = monaco.editor.create(container1, {
+                ...editorConfig,
+                value: '// 在此输入原始代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码'
+            });
 
-        this.editor2 = monaco.editor.create(container2, {
-            ...editorConfig,
-            value: '// 在此输入需要比较的代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码'
-        });
+            this.editor2 = monaco.editor.create(container2, {
+                ...editorConfig,
+                value: '// 在此输入需要比较的代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码'
+            });
 
-        // 添加窗口大小变化时的自适应
-        window.addEventListener('resize', () => {
-            if (this.editor1 && this.editor2) {
-                this.editor1.layout();
-                this.editor2.layout();
+            // 立即触发一次布局更新
+            this.editor1.layout();
+            this.editor2.layout();
+
+            // 添加窗口大小变化时的自适应
+            window.addEventListener('resize', () => {
+                if (this.editor1 && this.editor2) {
+                    this.editor1.layout();
+                    this.editor2.layout();
+                }
+            });
+
+            // 添加编辑器获得焦点时的处理
+            this.editor1.onDidFocusEditorText(() => {
+                const value = this.editor1.getValue();
+                if (value.startsWith('// 在此输入原始代码')) {
+                    this.editor1.setValue('');
+                    // 设置光标位置到开始处
+                    this.editor1.setPosition({lineNumber: 1, column: 1});
+                }
+            });
+
+            this.editor2.onDidFocusEditorText(() => {
+                const value = this.editor2.getValue();
+                if (value.startsWith('// 在此输入需要比较的代码')) {
+                    this.editor2.setValue('');
+                    // 设置光标位置到开始处
+                    this.editor2.setPosition({lineNumber: 1, column: 1});
+                }
+            });
+
+            // 添加编辑器失去焦点且内容为空时的处理
+            this.editor1.onDidBlurEditorText(() => {
+                if (!this.editor1.getValue().trim()) {
+                    this.editor1.setValue('// 在此输入原始代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码');
+                }
+            });
+
+            this.editor2.onDidBlurEditorText(() => {
+                if (!this.editor2.getValue().trim()) {
+                    this.editor2.setValue('// 在此输入需要比较的代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码');
+                }
+            });
+
+            // 确保编辑器正确加载
+            if (!this.editor1 || !this.editor2) {
+                throw new Error('编辑器初始化失败');
             }
-        });
-
-        // 添加编辑器获得焦点时的处理
-        this.editor1.onDidFocusEditorText(() => {
-            const value = this.editor1.getValue();
-            if (value.startsWith('// 在此输入原始代码')) {
-                this.editor1.setValue('');
-                // 设置光标位置到开始处
-                this.editor1.setPosition({lineNumber: 1, column: 1});
-            }
-        });
-
-        this.editor2.onDidFocusEditorText(() => {
-            const value = this.editor2.getValue();
-            if (value.startsWith('// 在此输入需要比较的代码')) {
-                this.editor2.setValue('');
-                // 设置光标位置到开始处
-                this.editor2.setPosition({lineNumber: 1, column: 1});
-            }
-        });
-
-        // 添加编辑器失去焦点且内容为空时的处理
-        this.editor1.onDidBlurEditorText(() => {
-            if (!this.editor1.getValue().trim()) {
-                this.editor1.setValue('// 在此输入原始代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码');
-            }
-        });
-
-        this.editor2.onDidBlurEditorText(() => {
-            if (!this.editor2.getValue().trim()) {
-                this.editor2.setValue('// 在此输入需要比较的代码\n// 支持多种编程语言\n// 可以从其他编辑器复制粘贴代码');
-            }
-        });
-
-        // 确保编辑器正确加载
-        if (!this.editor1 || !this.editor2) {
-            throw new Error('编辑器初始化失败');
+        } catch (error) {
+            throw new Error('编辑器初始化失败: ' + error.message);
         }
     }
 
     showError(message) {
+        console.error(message);
+        this.hideLoading(); // 出错时也要隐藏加载提示
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'p-4 bg-red-50 text-red-600 rounded-lg mt-4';
+        errorDiv.textContent = message;
+        
+        // 移除之前的错误提示
+        const oldError = document.querySelector('.bg-red-50');
+        if (oldError) {
+            oldError.remove();
+        }
+        
+        // 添加新的错误提示
         const container = document.querySelector('.container');
         if (container) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'p-4 bg-red-50 text-red-600 rounded-lg mt-4';
-            errorDiv.textContent = message;
-            container.appendChild(errorDiv);
+            container.insertBefore(errorDiv, container.firstChild);
         }
     }
 
@@ -236,40 +282,44 @@ class CodeDiffTool {
     }
 
     compare() {
-        let text1 = this.editor1.getValue();
-        let text2 = this.editor2.getValue();
-
-        if (!text1.trim() && !text2.trim()) {
-            this.elements.diffView.classList.add('hidden');
-            return;
-        }
-
         try {
-            // 处理文本
-            if (this.elements.ignoreCase.checked) {
-                text1 = text1.toLowerCase();
-                text2 = text2.toLowerCase();
-            }
-            if (this.elements.ignoreSpace.checked) {
-                text1 = text1.replace(/\s+/g, ' ').trim();
-                text2 = text2.replace(/\s+/g, ' ').trim();
+            if (!this.dmp) {
+                throw new Error('比较工具未初始化');
             }
 
-            // 计算差异
-            const diffs = this.dmp.diff_main(text1, text2);
+            const text1 = this.editor1.getValue();
+            const text2 = this.editor2.getValue();
+
+            // 检查输入内容
+            if (!text1.trim() || !text2.trim()) {
+                throw new Error('请在两个编辑器中都输入内容');
+            }
+
+            // 处理忽略选项
+            let processedText1 = text1;
+            let processedText2 = text2;
+
+            if (this.elements.ignoreCase.checked) {
+                processedText1 = processedText1.toLowerCase();
+                processedText2 = processedText2.toLowerCase();
+            }
+
+            if (this.elements.ignoreSpace.checked) {
+                processedText1 = processedText1.replace(/\s+/g, ' ').trim();
+                processedText2 = processedText2.replace(/\s+/g, ' ').trim();
+            }
+
+            // 执行比较
+            const diffs = this.dmp.diff_main(processedText1, processedText2);
             this.dmp.diff_cleanupSemantic(diffs);
 
-            // 显示差异
+            // 显示结果
+            this.elements.diffView.classList.remove('hidden');
+            this.elements.diffResult.innerHTML = '';
             this.showDiff(diffs);
         } catch (error) {
-            console.error('比较过程出错:', error);
-            // 显示错误提示
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'p-4 bg-red-50 text-red-600 rounded-lg';
-            errorDiv.textContent = '比较过程出现错误，请检查输入内容或刷新页面重试。';
-            this.elements.diffResult.innerHTML = '';
-            this.elements.diffResult.appendChild(errorDiv);
-            this.elements.diffView.classList.remove('hidden');
+            console.error('比较失败:', error);
+            this.showError('比较过程出现错误：' + error.message);
         }
     }
 
@@ -362,7 +412,23 @@ class CodeDiffTool {
     }
 }
 
-// 等待 DOM 完全加载后再初始化
-document.addEventListener('DOMContentLoaded', () => {
-    new CodeDiffTool();
+// 修改初始化方式，确保在页面完全加载后再初始化
+window.addEventListener('load', async () => {
+    try {
+        // 等待一小段时间确保所有资源加载完成
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await CodeDiffTool.create();
+    } catch (error) {
+        console.error('初始化失败:', error);
+        // 隐藏所有加载提示
+        document.querySelectorAll('.editor-loading').forEach(el => el.remove());
+        
+        const container = document.querySelector('.container');
+        if (container) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'p-4 bg-red-50 text-red-600 rounded-lg mt-4';
+            errorDiv.textContent = '工具初始化失败，请刷新页面重试。';
+            container.insertBefore(errorDiv, container.firstChild);
+        }
+    }
 });

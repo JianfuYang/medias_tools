@@ -132,7 +132,7 @@ async def tool_page(request: Request, tool_id: str):
         )
     
     # 如果是已完成的工具，重定向到专门的路由
-    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor', 'text-card','qrcode','content-diff']:
+    if tool_id in ['youtube', 'chatgpt', 'image-resize', 'image-compress', 'image-format', 'svg-editor', 'text-card','qrcode']:
         return RedirectResponse(url=f"/tools/{tool_id}/")
     
     # 其他工具显示开发中页面

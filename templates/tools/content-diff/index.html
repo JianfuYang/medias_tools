@@ -3,15 +3,21 @@
 {% block title %}代码比较器 - 在线代码对比工具{% endblock %}
 
 {% block head %}
+<!-- 引入 diff 库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch_uncompressed.js"></script>
+
 <!-- 引入 Monaco Editor -->
 <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.css">
-<script>var require = { paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs' } };</script>
+<script>
+    // 配置 require.js
+    var require = {
+        paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs' },
+        'vs/nls': { availableLanguages: { '*': 'zh-cn' } }
+    };
+</script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.nls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.js"></script>
-
-<!-- 引入 diff 库 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch_uncompressed.js"></script>
 
 <style>
 .editor-container {
@@ -173,5 +179,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/tools/content-diff/diff.js') }}"></script>
+<!-- 将 diff.js 移到页面底部 -->
+<script defer src="{{ url_for('static', path='js/tools/content-diff/diff.js') }}"></script>
 {% endblock %}
